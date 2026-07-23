@@ -12,7 +12,13 @@ import type { ContentNode, ContentNodeType, ContentService } from '../content/ty
 import type { GenerationJob, GenerationService } from '../generation/types';
 import { PageDraftEditor } from '../page/PageDraftEditor';
 import { PageDraftPreview } from '../page/PageDraftPreview';
-import type { PageContext, PageContextService, PageDraft, PageInputType } from '../page/types';
+import type {
+  PageContext,
+  PageContextService,
+  PageDraft,
+  PageInputType,
+  PublishedVersion,
+} from '../page/types';
 import { normalizeUrl } from '../page/url';
 import type { Workspace } from './types';
 
@@ -123,6 +129,20 @@ function draftStateLabel(pageContext: PageContext | null) {
   return pageContext.draft.isDirty ? 'unpublished changes' : 'up to date';
 }
 
+function draftForVersion(version: PublishedVersion): PageDraft {
+  return {
+    id: `version-draft-${version.id}`,
+    pageId: version.pageId,
+    title: version.title,
+    isDirty: false,
+    blocks: version.contentSnapshot,
+    layout: version.layoutSnapshot,
+    visual: version.visualSnapshot,
+    createdAt: version.createdAt,
+    updatedAt: version.createdAt,
+  };
+}
+
 export function WorkspaceShell({
   contentService,
   generationService,
@@ -140,8 +160,14 @@ export function WorkspaceShell({
   const [generationJob, setGenerationJob] = React.useState<GenerationJob | null>(null);
   const [isPublishing, setIsPublishing] = React.useState(false);
   const [publishError, setPublishError] = React.useState('');
+  const [selectedVersionId, setSelectedVersionId] = React.useState<string | null>(null);
   const [error, setError] = React.useState('');
   const selectedNode = nodes.find((node) => node.id === selectedNodeId) ?? null;
+  const selectedVersion =
+    pageContext?.versions.find((version) => version.id === selectedVersionId) ?? null;
+  const previewDraft = selectedVersion
+    ? draftForVersion(selectedVersion)
+    : pageContext?.draft ?? null;
   const isGenerating = generationJob?.status === 'queued' || generationJob?.status === 'running';
   const selectionStorageKey = `assisted-cms.selected-node.${workspace.id}`;
 
@@ -149,6 +175,7 @@ export function WorkspaceShell({
     setSelectedNodeId(nodeId);
     setGenerationJob(null);
     setPublishError('');
+    setSelectedVersionId(null);
     window.localStorage.setItem(selectionStorageKey, nodeId);
   }
 
@@ -180,13 +207,19 @@ export function WorkspaceShell({
     pageContextService.loadPageContext(selectedNode.id).then((loadedContext) => {
       if (isMounted) {
         setPageContext(loadedContext);
+        if (
+          selectedVersionId &&
+          !loadedContext.versions.some((version) => version.id === selectedVersionId)
+        ) {
+          setSelectedVersionId(null);
+        }
       }
     });
 
     return () => {
       isMounted = false;
     };
-  }, [pageContextService, selectedNode]);
+  }, [pageContextService, selectedNode, selectedVersionId]);
 
   async function handleCreate(type: ContentNodeType, parentId: string | null) {
     const parent = parentId ? nodes.find((node) => node.id === parentId) ?? null : null;
@@ -250,6 +283,7 @@ export function WorkspaceShell({
       if (result.job.status === 'succeeded' && result.draft) {
         await pageContextService.saveDraft(result.draft);
         setPageContext(await pageContextService.loadPageContext(selectedNode.id));
+        setSelectedVersionId(null);
       }
 
       setGenerationJob(result.job);
@@ -319,6 +353,7 @@ export function WorkspaceShell({
     };
 
     setError('');
+    setSelectedVersionId(null);
     setPageContext((currentContext) =>
       currentContext
         ? {
@@ -350,6 +385,7 @@ export function WorkspaceShell({
         pageId: selectedNode.id,
       });
       setPageContext(await pageContextService.loadPageContext(selectedNode.id));
+      setSelectedVersionId(null);
     } catch (publishFailure) {
       setPublishError(
         publishFailure instanceof Error ? publishFailure.message : 'Draft could not be published.',
@@ -459,7 +495,9 @@ export function WorkspaceShell({
             <button
               className="button secondary icon-label neutral"
               type="button"
-              disabled={selectedNode?.type !== 'page' || !pageContext?.draft || isPublishing}
+              disabled={
+                selectedNode?.type !== 'page' || !pageContext?.draft || Boolean(selectedVersion) || isPublishing
+              }
               onClick={handlePublishDraft}
             >
               <UploadCloud size={16} />
@@ -490,10 +528,44 @@ export function WorkspaceShell({
             ) : null}
           </div>
         ) : null}
-        {selectedNode?.type === 'page' && pageContext?.draft ? (
+        {selectedNode?.type === 'page' && pageContext?.versions.length ? (
+          <div className="version-navigator" aria-label="Published versions">
+            <strong>Published versions</strong>
+            <div className="version-list">
+              {pageContext.versions.map((version) => {
+                const isActive =
+                  pageContext.activePublication?.activeVersionId === version.id &&
+                  pageContext.activePublication.status === 'published';
+                return (
+                  <div className="version-row" key={version.id}>
+                    <button
+                      className="button secondary"
+                      type="button"
+                      onClick={() => setSelectedVersionId(version.id)}
+                    >
+                      Open version {version.versionNumber}
+                    </button>
+                    {isActive ? <span>Version {version.versionNumber} active</span> : null}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+        {selectedVersion ? (
+          <div className="version-view-banner" aria-live="polite">
+            <span>Viewing version {selectedVersion.versionNumber}</span>
+            <button className="button secondary" type="button" onClick={() => setSelectedVersionId(null)}>
+              Return to draft
+            </button>
+          </div>
+        ) : null}
+        {selectedNode?.type === 'page' && previewDraft ? (
           <>
-            <PageDraftPreview assets={pageContext.assets} draft={pageContext.draft} />
-            <PageDraftEditor draft={pageContext.draft} onDraftChange={handleDraftChange} />
+            <PageDraftPreview assets={pageContext?.assets ?? []} draft={previewDraft} />
+            {selectedVersion ? null : (
+              <PageDraftEditor draft={previewDraft} onDraftChange={handleDraftChange} />
+            )}
           </>
         ) : (
           <div className="preview-empty">

@@ -351,7 +351,7 @@ Technical Notes:
 - Do not infer active version from max version number alone if publication failed.
 - Add tests for first publish, republish, and failed publish behavior.
 
-### Story 5.3: Version Navigation In The CMS
+### [DONE] Story 5.3: Version Navigation In The CMS
 
 As a content manager, I want to view available versions for a page and navigate between them inside the CMS.
 
