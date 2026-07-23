@@ -108,6 +108,26 @@ p {
   color: #fff;
 }
 
+.button.secondary {
+  border: 1px solid #cfd8ce;
+  background: #f8faf6;
+  color: #1f2430;
+}
+
+.button.icon-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 0;
+  background: #1f5130;
+  color: #fff;
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .auth-error {
   display: flex;
   align-items: center;
@@ -148,6 +168,128 @@ p {
   cursor: pointer;
 }
 
+.workspace-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.workspace-summary strong {
+  font-size: 1.05rem;
+}
+
+.cms-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(360px, 1fr) minmax(260px, 340px);
+  gap: 14px;
+  margin-top: 14px;
+  min-height: 580px;
+}
+
+.workspace-panel {
+  min-width: 0;
+  border: 1px solid #d9ded6;
+  border-radius: 8px;
+  background: #fffdf8;
+}
+
+.hierarchy-panel,
+.inputs-panel {
+  padding: 16px;
+}
+
+.preview-panel {
+  display: flex;
+  flex-direction: column;
+  padding: 18px;
+}
+
+.panel-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+}
+
+.panel-heading h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.panel-heading-split {
+  justify-content: space-between;
+}
+
+.panel-heading-split h2 {
+  margin-top: 4px;
+}
+
+.empty-state,
+.preview-empty,
+.chat-empty {
+  color: #5d6472;
+}
+
+.empty-state {
+  margin-top: 28px;
+}
+
+.empty-state strong,
+.preview-empty strong,
+.chat-empty strong {
+  display: block;
+  color: #1f2430;
+}
+
+.empty-state .button {
+  margin-top: 18px;
+}
+
+.preview-empty {
+  display: grid;
+  flex: 1;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  min-height: 360px;
+  text-align: center;
+}
+
+.preview-empty p {
+  max-width: 340px;
+}
+
+.chat-empty {
+  margin-top: 28px;
+}
+
+.chat-composer {
+  display: grid;
+  gap: 10px;
+  margin: 28px 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.chat-composer label {
+  font-size: 0.84rem;
+  font-weight: 800;
+  color: #394052;
+}
+
+.chat-composer textarea {
+  width: 100%;
+  min-height: 110px;
+  resize: vertical;
+  border: 1px solid #d9ded6;
+  border-radius: 8px;
+  padding: 12px;
+  font: inherit;
+  color: #1f2430;
+  background: #fff;
+}
+
 @media (max-width: 760px) {
   .auth-panel {
     padding: 26px;
@@ -156,5 +298,9 @@ p {
   .workspace-header {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .cms-grid {
+    grid-template-columns: 1fr;
   }
 }

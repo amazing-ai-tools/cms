@@ -2,6 +2,7 @@ import React from 'react';
 import { AlertCircle, LogOut, ShieldCheck } from 'lucide-react';
 import type { AuthService, AuthSession } from './auth/types';
 import { createLocalWorkspaceService } from './workspace/localWorkspaceService';
+import { WorkspaceShell } from './workspace/WorkspaceShell';
 import type { Workspace, WorkspaceService } from './workspace/types';
 
 interface AppProps {
@@ -185,10 +186,9 @@ export function App({ authService, workspaceService = defaultWorkspaceService }:
         {workspaceState.status === 'creating' ? <p>Creating workspace...</p> : null}
         {workspaceState.status === 'loading' ? <p>Loading workspace...</p> : null}
         {workspaceState.status === 'ready' ? (
-          <div>
+          <div className="workspace-summary">
             <span className="eyebrow">Workspace</span>
-            <h2>{workspaceState.workspace.name}</h2>
-            <p>Owned by {authState.session.user.email}</p>
+            <strong>{workspaceState.workspace.name}</strong>
           </div>
         ) : null}
         {workspaceState.status === 'error' ? (
@@ -198,6 +198,7 @@ export function App({ authService, workspaceService = defaultWorkspaceService }:
           </div>
         ) : null}
       </section>
+      {workspaceState.status === 'ready' ? <WorkspaceShell workspace={workspaceState.workspace} /> : null}
     </main>
   );
 }

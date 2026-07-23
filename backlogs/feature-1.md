@@ -99,7 +99,7 @@ Technical Notes:
 - Keep workspace ownership checks in the backend/API layer, not only in the UI.
 - Add local seed or fixture support for development.
 
-### Story 1.3: CMS Workspace Shell
+### [DONE] Story 1.3: CMS Workspace Shell
 
 As a content manager, I want a dedicated workspace shell so I can navigate content, preview pages, and manage page inputs from one place.
 
