@@ -64,7 +64,7 @@ Use this as implementation guidance, not a mandatory schema name list.
 
 ## Epic 1: Google Authentication And Workspace Foundation
 
-### Story 1.1: Google Sign-In Gate
+### [DONE] Story 1.1: Google Sign-In Gate
 
 As a content manager, I want to sign in with Google so I can access my CMS workspace.
 
