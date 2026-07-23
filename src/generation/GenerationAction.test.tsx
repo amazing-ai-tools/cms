@@ -7,7 +7,9 @@ import { createLocalAuthService } from '../auth/localAuthService';
 import type { AuthUser } from '../auth/types';
 import { createLocalContentService } from '../content/localContentService';
 import { createLocalPageContextService } from '../page/localPageContextService';
+import type { PageDraft } from '../page/types';
 import { createLocalWorkspaceService } from '../workspace/localWorkspaceService';
+import type { GenerationResult, GenerationService } from './types';
 
 const user: AuthUser = {
   id: 'google-generation-user',
@@ -32,7 +34,52 @@ function deferred<T>() {
   return { promise, resolve };
 }
 
-async function renderWorkspaceWithPage(generationService: unknown) {
+function structuredDraft(pageId: string, title: string): PageDraft {
+  return {
+    id: 'draft-1',
+    pageId,
+    title,
+    blocks: [
+      {
+        id: 'block-hero',
+        type: 'hero',
+        content: title,
+        layout: {
+          column: 1,
+          row: 1,
+          width: 12,
+        },
+        visual: {
+          backgroundColor: '#f7fbf5',
+          textColor: '#17211b',
+          accentColor: '#2f7d5f',
+          size: 'large',
+        },
+      },
+    ],
+    layout: {
+      canvas: {
+        maxWidth: 1120,
+      },
+      sections: [
+        {
+          id: 'section-generated-proposal',
+          blockIds: ['block-hero'],
+        },
+      ],
+    },
+    visual: {
+      accentColor: '#2f7d5f',
+      backgroundColor: '#fbfcf8',
+      textColor: '#18201c',
+      spacing: 'balanced',
+    },
+    createdAt: '2026-07-23T00:00:00.000Z',
+    updatedAt: '2026-07-23T00:00:00.000Z',
+  };
+}
+
+async function renderWorkspaceWithPage(generationService: GenerationService) {
   const authService = createLocalAuthService({
     initialUser: user,
     storageKey: 'generation-auth',
@@ -81,8 +128,8 @@ async function renderWorkspaceWithPage(generationService: unknown) {
 
 describe('generate action and generation visibility', () => {
   test('runs a page-scoped generation job and saves a successful proposed draft', async () => {
-    const generation = deferred<unknown>();
-    const generationService = {
+    const generation = deferred<GenerationResult>();
+    const generationService: GenerationService = {
       generateDraft: vi.fn(() => generation.promise),
     };
     const { page, pageContextService } = await renderWorkspaceWithPage(generationService);
@@ -107,13 +154,7 @@ describe('generate action and generation visibility', () => {
     expect(within(previewPanel).getByText(/preparing draft request/i)).toBeInTheDocument();
 
     generation.resolve({
-      draft: {
-        id: 'draft-1',
-        pageId: page.id,
-        title: 'Generated launch page',
-        createdAt: '2026-07-23T00:00:00.000Z',
-        updatedAt: '2026-07-23T00:00:00.000Z',
-      },
+      draft: structuredDraft(page.id, 'Generated launch page'),
       job: {
         id: 'job-1',
         pageId: page.id,
@@ -132,9 +173,9 @@ describe('generate action and generation visibility', () => {
   });
 
   test('shows failed generation without replacing the existing draft', async () => {
-    const success = deferred<unknown>();
-    const failure = deferred<unknown>();
-    const generationService = {
+    const success = deferred<GenerationResult>();
+    const failure = deferred<GenerationResult>();
+    const generationService: GenerationService = {
       generateDraft: vi
         .fn()
         .mockReturnValueOnce(success.promise)
@@ -146,13 +187,7 @@ describe('generate action and generation visibility', () => {
 
     await userEvent.click(generateButton);
     success.resolve({
-      draft: {
-        id: 'draft-1',
-        pageId: page.id,
-        title: 'Generated launch page',
-        createdAt: '2026-07-23T00:00:00.000Z',
-        updatedAt: '2026-07-23T00:00:00.000Z',
-      },
+      draft: structuredDraft(page.id, 'Generated launch page'),
       job: { id: 'job-1', pageId: page.id, status: 'succeeded', steps: [] },
     });
     expect(await within(previewPanel).findByText(/generation succeeded/i)).toBeInTheDocument();

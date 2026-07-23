@@ -9,6 +9,7 @@ import type {
   PageInput,
   SavePageDraftInput,
 } from './types';
+import { validatePageDraft } from './draftSchema';
 
 interface LocalPageContextServiceOptions {
   storageKey?: string;
@@ -138,6 +139,8 @@ export function createLocalPageContextService(
     },
 
     async saveDraft(input: SavePageDraftInput): Promise<PageDraft> {
+      validatePageDraft(input);
+
       const storage = readStorage(storageKey);
       const existingDraftIndex = storage.drafts.findIndex((draft) => draft.pageId === input.pageId);
       const existingDraft =
@@ -147,6 +150,9 @@ export function createLocalPageContextService(
         id: input.id ?? existingDraft?.id ?? `draft-${storage.nextDraftId}`,
         pageId: input.pageId,
         title: input.title.trim(),
+        blocks: input.blocks,
+        layout: input.layout,
+        visual: input.visual,
         createdAt: input.createdAt ?? existingDraft?.createdAt ?? now,
         updatedAt: input.updatedAt ?? now,
       };

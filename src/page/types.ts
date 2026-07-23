@@ -35,10 +35,60 @@ export interface AddPageAssetInput {
   size: number;
 }
 
+export type PageDraftBlockType = 'hero' | 'text' | 'media';
+export type PageDraftSize = 'compact' | 'standard' | 'large';
+export type PageDraftSpacing = 'tight' | 'balanced' | 'airy';
+
+export interface PageDraftBlockLayout {
+  column: number;
+  row: number;
+  width: number;
+  height?: number;
+}
+
+export interface PageDraftBlockVisual {
+  backgroundColor: string;
+  textColor: string;
+  accentColor?: string;
+  size: PageDraftSize;
+}
+
+export interface PageDraftBlock {
+  id: string;
+  type: PageDraftBlockType;
+  content: string;
+  assetId?: string;
+  layout: PageDraftBlockLayout;
+  visual: PageDraftBlockVisual;
+}
+
+export interface PageDraftLayoutSection {
+  id: string;
+  title?: string;
+  blockIds: string[];
+}
+
+export interface PageDraftLayout {
+  canvas: {
+    maxWidth: number;
+  };
+  sections: PageDraftLayoutSection[];
+}
+
+export interface PageDraftVisual {
+  accentColor: string;
+  backgroundColor: string;
+  textColor: string;
+  spacing: PageDraftSpacing;
+}
+
 export interface PageDraft {
   id: string;
   pageId: string;
   title: string;
+  blocks: PageDraftBlock[];
+  layout: PageDraftLayout;
+  visual: PageDraftVisual;
   createdAt: string;
   updatedAt: string;
 }
@@ -47,6 +97,9 @@ export interface SavePageDraftInput {
   id?: string;
   pageId: string;
   title: string;
+  blocks: PageDraftBlock[];
+  layout: PageDraftLayout;
+  visual: PageDraftVisual;
   createdAt?: string;
   updatedAt?: string;
 }

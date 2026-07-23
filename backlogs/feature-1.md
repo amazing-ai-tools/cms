@@ -246,7 +246,7 @@ Technical Notes:
 - Include page inputs, attachment references, current draft state, and page hierarchy context in the generation request.
 - Make generation status pollable or streamable behind an adapter.
 
-### Story 4.2: Structured Generation Output
+### [DONE] Story 4.2: Structured Generation Output
 
 As a content manager, I want generated output to include both page content and layout or positioning so the page is usable as a proposal.
 
