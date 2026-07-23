@@ -280,7 +280,7 @@ Technical Notes:
 - Avoid coupling the renderer to editing controls.
 - Add tests for rendering text blocks, media blocks, and style attributes.
 
-### Story 4.4: Edit Generated Page Attributes
+### [DONE] Story 4.4: Edit Generated Page Attributes
 
 As a content manager, I want to edit generated content and visual attributes so the page matches my intended presentation.
 

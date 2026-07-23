@@ -2,8 +2,9 @@ import React from 'react';
 import { AlertCircle, FileText, FolderTree, MessageSquareText, Plus, Sparkles } from 'lucide-react';
 import type { ContentNode, ContentNodeType, ContentService } from '../content/types';
 import type { GenerationJob, GenerationService } from '../generation/types';
+import { PageDraftEditor } from '../page/PageDraftEditor';
 import { PageDraftPreview } from '../page/PageDraftPreview';
-import type { PageContext, PageContextService, PageInputType } from '../page/types';
+import type { PageContext, PageContextService, PageDraft, PageInputType } from '../page/types';
 import { normalizeUrl } from '../page/url';
 import type { Workspace } from './types';
 
@@ -288,6 +289,29 @@ export function WorkspaceShell({
     }
   }
 
+  async function handleDraftChange(nextDraft: PageDraft) {
+    if (selectedNode?.type !== 'page') {
+      return;
+    }
+
+    setError('');
+    setPageContext((currentContext) =>
+      currentContext
+        ? {
+            ...currentContext,
+            draft: nextDraft,
+          }
+        : currentContext,
+    );
+
+    try {
+      await pageContextService.saveDraft(nextDraft);
+    } catch (draftError) {
+      setError(draftError instanceof Error ? draftError.message : 'Draft changes could not be saved.');
+      setPageContext(await pageContextService.loadPageContext(selectedNode.id));
+    }
+  }
+
   return (
     <div className="cms-grid" data-workspace-id={workspace.id}>
       <section
@@ -404,7 +428,10 @@ export function WorkspaceShell({
           </div>
         ) : null}
         {selectedNode?.type === 'page' && pageContext?.draft ? (
-          <PageDraftPreview assets={pageContext.assets} draft={pageContext.draft} />
+          <>
+            <PageDraftPreview assets={pageContext.assets} draft={pageContext.draft} />
+            <PageDraftEditor draft={pageContext.draft} onDraftChange={handleDraftChange} />
+          </>
         ) : (
           <div className="preview-empty">
             <FileText size={26} />
