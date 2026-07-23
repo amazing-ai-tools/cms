@@ -2,6 +2,7 @@ import React from 'react';
 import { AlertCircle, FileText, FolderTree, MessageSquareText, Plus, Sparkles } from 'lucide-react';
 import type { ContentNode, ContentNodeType, ContentService } from '../content/types';
 import type { GenerationJob, GenerationService } from '../generation/types';
+import { PageDraftPreview } from '../page/PageDraftPreview';
 import type { PageContext, PageContextService, PageInputType } from '../page/types';
 import { normalizeUrl } from '../page/url';
 import type { Workspace } from './types';
@@ -402,21 +403,25 @@ export function WorkspaceShell({
             ) : null}
           </div>
         ) : null}
-        <div className="preview-empty">
-          <FileText size={26} />
-          <strong>
-            {selectedNode
-              ? `${selectedNode.type === 'page' ? 'Selected page' : 'Selected node'}: ${
-                  selectedNode.title
-                }`
-              : 'No page selected'}
-          </strong>
-          <p>
-            {selectedNode?.type === 'page'
-              ? 'Draft preview will load here as page content is generated.'
-              : 'Select a page to preview draft content and run generation.'}
-          </p>
-        </div>
+        {selectedNode?.type === 'page' && pageContext?.draft ? (
+          <PageDraftPreview assets={pageContext.assets} draft={pageContext.draft} />
+        ) : (
+          <div className="preview-empty">
+            <FileText size={26} />
+            <strong>
+              {selectedNode
+                ? `${selectedNode.type === 'page' ? 'Selected page' : 'Selected node'}: ${
+                    selectedNode.title
+                  }`
+                : 'No page selected'}
+            </strong>
+            <p>
+              {selectedNode?.type === 'page'
+                ? 'Draft preview will load here as page content is generated.'
+                : 'Select a page to preview draft content and run generation.'}
+            </p>
+          </div>
+        )}
       </section>
 
       <section className="workspace-panel inputs-panel" aria-labelledby="page-inputs-title" role="region">

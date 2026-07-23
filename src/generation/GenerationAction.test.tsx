@@ -164,6 +164,9 @@ describe('generate action and generation visibility', () => {
     });
 
     expect(await within(previewPanel).findByText(/generation succeeded/i)).toBeInTheDocument();
+    expect(
+      await within(previewPanel).findByRole('heading', { name: /generated launch page/i }),
+    ).toBeInTheDocument();
     await waitFor(async () => {
       expect((await pageContextService.loadPageContext(page.id)).draft?.title).toBe(
         'Generated launch page',

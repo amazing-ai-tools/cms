@@ -263,7 +263,7 @@ Technical Notes:
 - Validate AI output before saving it as the active draft.
 - Add a deterministic local generation adapter for development and tests if the AI provider is unavailable locally.
 
-### Story 4.3: Render Generated Draft Preview
+### [DONE] Story 4.3: Render Generated Draft Preview
 
 As a content manager, I want to preview generated content so I can evaluate the page before publishing.
 
