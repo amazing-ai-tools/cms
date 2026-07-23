@@ -10,9 +10,11 @@ import {
   Plus,
   Save,
   Send,
+  Settings,
   Sparkles,
   Trash2,
   UploadCloud,
+  X,
 } from 'lucide-react';
 import type { ContentNode, ContentNodeType, ContentService } from '../content/types';
 import { buildEmbedSnippet } from '../embed/embedScript';
@@ -225,6 +227,7 @@ export function WorkspaceShell({
     provider: 'xai',
   });
   const [aiSettingsError, setAiSettingsError] = React.useState('');
+  const [isAiSettingsOpen, setIsAiSettingsOpen] = React.useState(false);
   const [isSavingAiSettings, setIsSavingAiSettings] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
   const selectedNode = nodes.find((node) => node.id === selectedNodeId) ?? null;
@@ -674,7 +677,154 @@ export function WorkspaceShell({
   }
 
   return (
-    <div className="cms-grid" data-workspace-id={workspace.id}>
+    <>
+      <div className="workspace-action-bar">
+        <div>
+          <span className="eyebrow">Workspace AI</span>
+          <strong>{selectedProviderOption?.label ?? aiForm.provider}</strong>
+          <small>{aiSettings.hasApiKey ? 'key saved' : 'key required'}</small>
+        </div>
+        <button
+          aria-label="Workspace settings"
+          className="icon-button workspace-settings-trigger"
+          title="Workspace settings"
+          type="button"
+          onClick={() => setIsAiSettingsOpen(true)}
+        >
+          <Settings size={18} />
+        </button>
+      </div>
+
+      {isAiSettingsOpen ? (
+        <div className="settings-overlay" role="presentation">
+          <div
+            aria-labelledby="workspace-ai-settings-title"
+            aria-modal="true"
+            className="workspace-settings-dialog"
+            role="dialog"
+          >
+            <div className="settings-dialog-heading">
+              <div>
+                <span className="eyebrow">Workspace settings</span>
+                <h2 id="workspace-ai-settings-title">Workspace AI settings</h2>
+              </div>
+              <button
+                aria-label="Close workspace settings"
+                className="icon-button"
+                type="button"
+                onClick={() => setIsAiSettingsOpen(false)}
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <form
+              aria-label="Workspace AI settings form"
+              className="ai-settings-panel workspace-ai-settings-form"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void handleSaveAiSettings();
+              }}
+            >
+              <div className="ai-settings-heading">
+                <Bot size={16} />
+                <strong>AI generation</strong>
+                <small>{aiSettings.hasApiKey ? 'key saved' : 'key required'}</small>
+              </div>
+              <label htmlFor="ai-provider">
+                AI provider
+                <select
+                  id="ai-provider"
+                  value={aiForm.provider}
+                  onChange={(event) => handleAiProviderChange(event.target.value)}
+                >
+                  {aiSettings.availableProviders.map((provider) => (
+                    <option key={provider.id} value={provider.id}>
+                      {provider.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label htmlFor="ai-model">
+                AI model
+                <input
+                  id="ai-model"
+                  list={`ai-model-options-${workspace.id}`}
+                  type="text"
+                  value={aiForm.model}
+                  onChange={(event) =>
+                    setAiForm((currentForm) => ({
+                      ...currentForm,
+                      model: event.target.value,
+                    }))
+                  }
+                />
+                <datalist id={`ai-model-options-${workspace.id}`}>
+                  {selectedProviderOption?.models.map((model) => (
+                    <option key={model.id} value={model.id}>
+                      {model.label}
+                    </option>
+                  ))}
+                </datalist>
+              </label>
+              <label htmlFor="ai-effort">
+                Effort
+                <select
+                  id="ai-effort"
+                  disabled={!effortOptions.length}
+                  value={effortOptions.length ? aiForm.effort : ''}
+                  onChange={(event) =>
+                    setAiForm((currentForm) => ({
+                      ...currentForm,
+                      effort: event.target.value,
+                    }))
+                  }
+                >
+                  {effortOptions.length ? (
+                    effortOptions.map((effort) => (
+                      <option key={effort} value={effort}>
+                        {effort}
+                      </option>
+                    ))
+                  ) : (
+                    <option value="">Not supported</option>
+                  )}
+                </select>
+              </label>
+              <label htmlFor="workspace-api-key">
+                Workspace API key
+                <input
+                  id="workspace-api-key"
+                  autoComplete="off"
+                  placeholder={aiSettings.hasApiKey ? 'Saved key is preserved' : 'Paste provider key'}
+                  type="password"
+                  value={aiForm.apiKey}
+                  onChange={(event) =>
+                    setAiForm((currentForm) => ({
+                      ...currentForm,
+                      apiKey: event.target.value,
+                    }))
+                  }
+                />
+              </label>
+              {aiSettingsError ? (
+                <div className="auth-error compact" role="alert">
+                  {aiSettingsError}
+                </div>
+              ) : null}
+              <button
+                className="button secondary icon-label neutral"
+                disabled={!aiForm.provider || !aiForm.model || isSavingAiSettings}
+                type="submit"
+              >
+                <Save size={16} />
+                {isSavingAiSettings ? 'Saving AI settings' : 'Save AI settings'}
+              </button>
+            </form>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="cms-grid" data-workspace-id={workspace.id}>
       <section
         className="workspace-panel hierarchy-panel"
         aria-labelledby="content-hierarchy-title"
@@ -956,111 +1106,7 @@ export function WorkspaceShell({
                 <li>Draft: {draftStateLabel(pageContext)}</li>
                 <li>Versions: {pageContext?.versions.length ?? 0}</li>
                 <li>Active version: {pageContext?.activePublication ? 'published' : 'none'}</li>
-                <li>AI provider: {selectedProviderOption?.label ?? aiForm.provider}</li>
               </ul>
-              <form
-                aria-label="Workspace AI settings"
-                className="ai-settings-panel"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void handleSaveAiSettings();
-                }}
-              >
-                <div className="ai-settings-heading">
-                  <Bot size={16} />
-                  <strong>AI generation</strong>
-                  <small>{aiSettings.hasApiKey ? 'key saved' : 'key required'}</small>
-                </div>
-                <label htmlFor="ai-provider">
-                  AI provider
-                  <select
-                    id="ai-provider"
-                    value={aiForm.provider}
-                    onChange={(event) => handleAiProviderChange(event.target.value)}
-                  >
-                    {aiSettings.availableProviders.map((provider) => (
-                      <option key={provider.id} value={provider.id}>
-                        {provider.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label htmlFor="ai-model">
-                  AI model
-                  <input
-                    id="ai-model"
-                    list={`ai-model-options-${workspace.id}`}
-                    type="text"
-                    value={aiForm.model}
-                    onChange={(event) =>
-                      setAiForm((currentForm) => ({
-                        ...currentForm,
-                        model: event.target.value,
-                      }))
-                    }
-                  />
-                  <datalist id={`ai-model-options-${workspace.id}`}>
-                    {selectedProviderOption?.models.map((model) => (
-                      <option key={model.id} value={model.id}>
-                        {model.label}
-                      </option>
-                    ))}
-                  </datalist>
-                </label>
-                <label htmlFor="ai-effort">
-                  Effort
-                  <select
-                    id="ai-effort"
-                    disabled={!effortOptions.length}
-                    value={effortOptions.length ? aiForm.effort : ''}
-                    onChange={(event) =>
-                      setAiForm((currentForm) => ({
-                        ...currentForm,
-                        effort: event.target.value,
-                      }))
-                    }
-                  >
-                    {effortOptions.length ? (
-                      effortOptions.map((effort) => (
-                        <option key={effort} value={effort}>
-                          {effort}
-                        </option>
-                      ))
-                    ) : (
-                      <option value="">Not supported</option>
-                    )}
-                  </select>
-                </label>
-                <label htmlFor="workspace-api-key">
-                  Workspace API key
-                  <input
-                    id="workspace-api-key"
-                    autoComplete="off"
-                    placeholder={aiSettings.hasApiKey ? 'Saved key is preserved' : 'Paste provider key'}
-                    type="password"
-                    value={aiForm.apiKey}
-                    onChange={(event) =>
-                      setAiForm((currentForm) => ({
-                        ...currentForm,
-                        apiKey: event.target.value,
-                      }))
-                    }
-                  />
-                </label>
-                {aiSettingsError ? (
-                  <div className="auth-error compact" role="alert">
-                    {aiSettingsError}
-                  </div>
-                ) : null}
-                <button
-                  className="button secondary icon-label neutral"
-                  disabled={!aiForm.provider || !aiForm.model || isSavingAiSettings}
-                  type="submit"
-                >
-                  <Save size={16} />
-                  {isSavingAiSettings ? 'Saving AI settings' : 'Save AI settings'}
-                </button>
-              </form>
               <div className="embed-snippet-panel">
                 <strong>Embed</strong>
                 {activeVersion ? (
@@ -1163,6 +1209,7 @@ export function WorkspaceShell({
           </button>
         </fieldset>
       </section>
-    </div>
+      </div>
+    </>
   );
 }

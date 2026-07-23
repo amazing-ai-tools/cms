@@ -280,7 +280,7 @@ describe('generate action and generation visibility', () => {
     );
   });
 
-  test('saves provider, model, effort, and workspace API key from the page inputs panel', async () => {
+  test('saves provider, model, effort, and workspace API key from workspace settings', async () => {
     const generationService: GenerationService = {
       generateDraft: vi.fn(),
     };
@@ -288,15 +288,19 @@ describe('generate action and generation visibility', () => {
     await renderWorkspaceWithPage(generationService, workspaceAiSettingsService);
     const inputsPanel = screen.getByRole('region', { name: /page inputs/i });
 
+    expect(within(inputsPanel).queryByLabelText(/workspace api key/i)).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /workspace settings/i }));
+    const settingsDialog = await screen.findByRole('dialog', { name: /workspace ai settings/i });
     await userEvent.selectOptions(
-      await within(inputsPanel).findByLabelText(/ai provider/i),
+      await within(settingsDialog).findByLabelText(/ai provider/i),
       'anthropic',
     );
-    await userEvent.clear(within(inputsPanel).getByLabelText(/ai model/i));
-    await userEvent.type(within(inputsPanel).getByLabelText(/ai model/i), 'claude-opus-4-6');
-    await userEvent.selectOptions(within(inputsPanel).getByLabelText(/effort/i), 'medium');
-    await userEvent.type(within(inputsPanel).getByLabelText(/workspace api key/i), 'sk-ant-test');
-    await userEvent.click(within(inputsPanel).getByRole('button', { name: /save ai settings/i }));
+    await userEvent.clear(within(settingsDialog).getByLabelText(/ai model/i));
+    await userEvent.type(within(settingsDialog).getByLabelText(/ai model/i), 'claude-opus-4-6');
+    await userEvent.selectOptions(within(settingsDialog).getByLabelText(/effort/i), 'medium');
+    await userEvent.type(within(settingsDialog).getByLabelText(/workspace api key/i), 'sk-ant-test');
+    await userEvent.click(within(settingsDialog).getByRole('button', { name: /save ai settings/i }));
 
     expect(workspaceAiSettingsService.saveSettings).toHaveBeenCalledWith(
       'workspace-google-generation-user',

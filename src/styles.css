@@ -221,6 +221,88 @@ p {
   font-size: 1.05rem;
 }
 
+.workspace-action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 14px;
+  padding: 10px 12px 10px 14px;
+  border: 1px solid #d9ded6;
+  border-radius: 8px;
+  background: #fffdf8;
+}
+
+.workspace-action-bar > div {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.workspace-action-bar strong,
+.workspace-action-bar small {
+  overflow-wrap: anywhere;
+}
+
+.workspace-action-bar strong {
+  color: #1f2430;
+}
+
+.workspace-action-bar small {
+  border: 1px solid #cfd8ce;
+  border-radius: 999px;
+  padding: 4px 8px;
+  color: #516b58;
+  background: #f3f7f2;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.workspace-settings-trigger {
+  flex: 0 0 auto;
+}
+
+.settings-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow-y: auto;
+  padding: clamp(18px, 5vw, 58px);
+  background: rgba(31, 36, 48, 0.42);
+}
+
+.workspace-settings-dialog {
+  width: min(100%, 560px);
+  border: 1px solid #cfd8ce;
+  border-radius: 8px;
+  padding: 18px;
+  background: #fffdf8;
+  box-shadow: 0 28px 90px rgba(31, 36, 48, 0.24);
+}
+
+.settings-dialog-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.settings-dialog-heading h2 {
+  margin: 6px 0 0;
+  color: #1f2430;
+  font-size: 1.25rem;
+  letter-spacing: 0;
+}
+
+.workspace-ai-settings-form {
+  margin-top: 18px;
+}
+
 .cms-grid {
   display: grid;
   grid-template-columns: minmax(220px, 280px) minmax(360px, 1fr) minmax(260px, 340px);
@@ -909,6 +991,16 @@ p {
   .workspace-header {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .workspace-action-bar,
+  .workspace-action-bar > div {
+    align-items: flex-start;
+  }
+
+  .workspace-action-bar > div {
+    flex-direction: column;
+    gap: 6px;
   }
 
   .cms-grid {
