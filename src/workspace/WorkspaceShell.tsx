@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   AlertCircle,
+  Bot,
   ExternalLink,
   FileText,
   FolderTree,
@@ -25,7 +26,14 @@ import type {
   PageInputType,
   PublishedVersion,
 } from '../page/types';
+import { readUploadSourceForFile } from '../page/uploadSource';
 import { normalizeUrl } from '../page/url';
+import {
+  defaultWorkspaceAiSettings,
+  effortOptionsFor,
+  type WorkspaceAiSettings,
+  type WorkspaceAiSettingsService,
+} from './aiSettings';
 import type { Workspace } from './types';
 
 interface WorkspaceShellProps {
@@ -33,6 +41,7 @@ interface WorkspaceShellProps {
   generationService: GenerationService;
   pageContextService: PageContextService;
   workspace: Workspace;
+  workspaceAiSettingsService: WorkspaceAiSettingsService;
 }
 
 function defaultTitleFor(type: ContentNodeType, nodes: ContentNode[], parent: ContentNode | null) {
@@ -189,6 +198,7 @@ export function WorkspaceShell({
   generationService,
   pageContextService,
   workspace,
+  workspaceAiSettingsService,
 }: WorkspaceShellProps) {
   const [nodes, setNodes] = React.useState<ContentNode[]>([]);
   const [selectedNodeId, setSelectedNodeId] = React.useState<string | null>(null);
@@ -205,6 +215,17 @@ export function WorkspaceShell({
   const [contentNodeForm, setContentNodeForm] = React.useState({ title: '', slug: '' });
   const [isSavingContentNode, setIsSavingContentNode] = React.useState(false);
   const [isDeletingContentNode, setIsDeletingContentNode] = React.useState(false);
+  const [aiSettings, setAiSettings] = React.useState<WorkspaceAiSettings>(() =>
+    defaultWorkspaceAiSettings(workspace.id),
+  );
+  const [aiForm, setAiForm] = React.useState({
+    apiKey: '',
+    effort: '',
+    model: 'grok-4.5',
+    provider: 'xai',
+  });
+  const [aiSettingsError, setAiSettingsError] = React.useState('');
+  const [isSavingAiSettings, setIsSavingAiSettings] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
   const selectedNode = nodes.find((node) => node.id === selectedNodeId) ?? null;
   const selectedCategory = canCreateChildCategory(selectedNode) ? selectedNode : null;
@@ -234,6 +255,14 @@ export function WorkspaceShell({
     : pageContext?.draft ?? null;
   const isGenerating = generationJob?.status === 'queued' || generationJob?.status === 'running';
   const selectionStorageKey = `assisted-cms.selected-node.${workspace.id}`;
+  const selectedProviderOption = aiSettings.availableProviders.find(
+    (provider) => provider.id === aiForm.provider,
+  );
+  const effortOptions = effortOptionsFor(
+    aiSettings.availableProviders,
+    aiForm.provider,
+    aiForm.model,
+  );
 
   function handleSelectNode(nodeId: string) {
     setSelectedNodeId(nodeId);
@@ -276,6 +305,50 @@ export function WorkspaceShell({
       isMounted = false;
     };
   }, [contentService, selectionStorageKey, workspace.id]);
+
+  React.useEffect(() => {
+    let isMounted = true;
+    setAiSettingsError('');
+
+    workspaceAiSettingsService
+      .loadSettings(workspace.id)
+      .then((loadedSettings) => {
+        if (!isMounted) {
+          return;
+        }
+
+        setAiSettings(loadedSettings);
+        setAiForm({
+          apiKey: '',
+          effort: loadedSettings.effort ?? '',
+          model: loadedSettings.model,
+          provider: loadedSettings.provider,
+        });
+      })
+      .catch((settingsError) => {
+        if (!isMounted) {
+          return;
+        }
+
+        const fallback = defaultWorkspaceAiSettings(workspace.id);
+        setAiSettings(fallback);
+        setAiForm({
+          apiKey: '',
+          effort: fallback.effort ?? '',
+          model: fallback.model,
+          provider: fallback.provider,
+        });
+        setAiSettingsError(
+          settingsError instanceof Error
+            ? settingsError.message
+            : 'AI settings could not be loaded.',
+        );
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [workspace.id, workspaceAiSettingsService]);
 
   React.useEffect(() => {
     if (!selectedEditableNode) {
@@ -428,11 +501,13 @@ export function WorkspaceShell({
       }
 
       for (const file of pendingFiles) {
+        const uploadSource = await readUploadSourceForFile(file);
         await pageContextService.addAsset({
           pageId: selectedNode.id,
           filename: file.name,
           mimeType: file.type,
           size: file.size,
+          ...uploadSource,
         });
       }
 
@@ -466,10 +541,16 @@ export function WorkspaceShell({
       const selectedPageContext =
         pageContext ?? (await pageContextService.loadPageContext(selectedNode.id));
       const result = await generationService.generateDraft({
+        ai: {
+          ...(effortOptions.length && aiForm.effort ? { effort: aiForm.effort } : {}),
+          model: aiForm.model,
+          provider: aiForm.provider,
+        },
         hierarchyPath: hierarchyPathFor(nodes, selectedNode),
         pageContext: selectedPageContext,
         pageId: selectedNode.id,
         pageTitle: selectedNode.title,
+        workspaceId: workspace.id,
       });
 
       if (result.job.status === 'succeeded' && result.draft) {
@@ -487,6 +568,47 @@ export function WorkspaceShell({
         status: 'failed',
         steps: [...runningJob.steps, 'Generation failed'],
       });
+    }
+  }
+
+  function handleAiProviderChange(providerId: string) {
+    const provider = aiSettings.availableProviders.find((candidate) => candidate.id === providerId);
+    const model = provider?.models[0];
+
+    setAiForm((currentForm) => ({
+      ...currentForm,
+      effort: model?.supportedEfforts[0] ?? '',
+      model: model?.id ?? '',
+      provider: providerId,
+    }));
+    setAiSettingsError('');
+  }
+
+  async function handleSaveAiSettings() {
+    try {
+      setIsSavingAiSettings(true);
+      setAiSettingsError('');
+      const nextSettings = await workspaceAiSettingsService.saveSettings(workspace.id, {
+        ...(aiForm.apiKey.trim() ? { apiKey: aiForm.apiKey.trim() } : {}),
+        ...(effortOptions.length && aiForm.effort ? { effort: aiForm.effort } : {}),
+        model: aiForm.model,
+        provider: aiForm.provider,
+      });
+      setAiSettings(nextSettings);
+      setAiForm({
+        apiKey: '',
+        effort: nextSettings.effort ?? '',
+        model: nextSettings.model,
+        provider: nextSettings.provider,
+      });
+    } catch (settingsError) {
+      setAiSettingsError(
+        settingsError instanceof Error
+          ? settingsError.message
+          : 'AI settings could not be saved.',
+      );
+    } finally {
+      setIsSavingAiSettings(false);
     }
   }
 
@@ -834,7 +956,111 @@ export function WorkspaceShell({
                 <li>Draft: {draftStateLabel(pageContext)}</li>
                 <li>Versions: {pageContext?.versions.length ?? 0}</li>
                 <li>Active version: {pageContext?.activePublication ? 'published' : 'none'}</li>
+                <li>AI provider: {selectedProviderOption?.label ?? aiForm.provider}</li>
               </ul>
+              <form
+                aria-label="Workspace AI settings"
+                className="ai-settings-panel"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void handleSaveAiSettings();
+                }}
+              >
+                <div className="ai-settings-heading">
+                  <Bot size={16} />
+                  <strong>AI generation</strong>
+                  <small>{aiSettings.hasApiKey ? 'key saved' : 'key required'}</small>
+                </div>
+                <label htmlFor="ai-provider">
+                  AI provider
+                  <select
+                    id="ai-provider"
+                    value={aiForm.provider}
+                    onChange={(event) => handleAiProviderChange(event.target.value)}
+                  >
+                    {aiSettings.availableProviders.map((provider) => (
+                      <option key={provider.id} value={provider.id}>
+                        {provider.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label htmlFor="ai-model">
+                  AI model
+                  <input
+                    id="ai-model"
+                    list={`ai-model-options-${workspace.id}`}
+                    type="text"
+                    value={aiForm.model}
+                    onChange={(event) =>
+                      setAiForm((currentForm) => ({
+                        ...currentForm,
+                        model: event.target.value,
+                      }))
+                    }
+                  />
+                  <datalist id={`ai-model-options-${workspace.id}`}>
+                    {selectedProviderOption?.models.map((model) => (
+                      <option key={model.id} value={model.id}>
+                        {model.label}
+                      </option>
+                    ))}
+                  </datalist>
+                </label>
+                <label htmlFor="ai-effort">
+                  Effort
+                  <select
+                    id="ai-effort"
+                    disabled={!effortOptions.length}
+                    value={effortOptions.length ? aiForm.effort : ''}
+                    onChange={(event) =>
+                      setAiForm((currentForm) => ({
+                        ...currentForm,
+                        effort: event.target.value,
+                      }))
+                    }
+                  >
+                    {effortOptions.length ? (
+                      effortOptions.map((effort) => (
+                        <option key={effort} value={effort}>
+                          {effort}
+                        </option>
+                      ))
+                    ) : (
+                      <option value="">Not supported</option>
+                    )}
+                  </select>
+                </label>
+                <label htmlFor="workspace-api-key">
+                  Workspace API key
+                  <input
+                    id="workspace-api-key"
+                    autoComplete="off"
+                    placeholder={aiSettings.hasApiKey ? 'Saved key is preserved' : 'Paste provider key'}
+                    type="password"
+                    value={aiForm.apiKey}
+                    onChange={(event) =>
+                      setAiForm((currentForm) => ({
+                        ...currentForm,
+                        apiKey: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+                {aiSettingsError ? (
+                  <div className="auth-error compact" role="alert">
+                    {aiSettingsError}
+                  </div>
+                ) : null}
+                <button
+                  className="button secondary icon-label neutral"
+                  disabled={!aiForm.provider || !aiForm.model || isSavingAiSettings}
+                  type="submit"
+                >
+                  <Save size={16} />
+                  {isSavingAiSettings ? 'Saving AI settings' : 'Save AI settings'}
+                </button>
+              </form>
               <div className="embed-snippet-panel">
                 <strong>Embed</strong>
                 {activeVersion ? (

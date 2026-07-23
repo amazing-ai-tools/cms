@@ -685,6 +685,56 @@ p {
   font-size: 0.9rem;
 }
 
+.ai-settings-panel {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  border: 1px solid #ccd9d1;
+  border-radius: 8px;
+  padding: 12px;
+  background: #f3f7f2;
+}
+
+.ai-settings-heading {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  color: #1f2430;
+}
+
+.ai-settings-heading small {
+  color: #516b58;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.ai-settings-panel label {
+  display: grid;
+  gap: 5px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #394052;
+}
+
+.ai-settings-panel input,
+.ai-settings-panel select {
+  min-height: 38px;
+  width: 100%;
+  border: 1px solid #c8d4c8;
+  border-radius: 8px;
+  padding: 0 10px;
+  color: #1f2430;
+  background: #fff;
+  font: inherit;
+}
+
+.ai-settings-panel select:disabled {
+  color: #6b7280;
+  background: #eef1ed;
+}
+
 .embed-snippet-panel {
   display: grid;
   gap: 8px;

@@ -1,5 +1,6 @@
 export type PageInputType = 'instruction' | 'idea' | 'description' | 'link' | 'upload';
-export type MaterialFamily = 'image' | 'media' | 'pdf' | 'word';
+export type MaterialFamily = 'document' | 'image' | 'media' | 'pdf' | 'word';
+export type PageAssetSourceEncoding = 'text' | 'data-url';
 
 export interface PageInput {
   id: string;
@@ -24,6 +25,8 @@ export interface PageAsset {
   family: MaterialFamily;
   storageUrl: string;
   cdnUrl: string | null;
+  sourceContent?: string;
+  sourceEncoding?: PageAssetSourceEncoding;
   uploadState: 'uploaded';
   createdAt: string;
 }
@@ -33,6 +36,8 @@ export interface AddPageAssetInput {
   filename: string;
   mimeType: string;
   size: number;
+  sourceContent?: string;
+  sourceEncoding?: PageAssetSourceEncoding;
 }
 
 export type PageDraftBlockType = 'hero' | 'text' | 'media';

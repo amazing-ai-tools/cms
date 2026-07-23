@@ -21,6 +21,7 @@ const user: AuthUser = {
 
 type AppWithGenerationProps = ComponentProps<typeof App> & {
   generationService?: unknown;
+  workspaceAiSettingsService?: unknown;
 };
 
 const AppWithGeneration = App as ComponentType<AppWithGenerationProps>;
@@ -80,7 +81,65 @@ function structuredDraft(pageId: string, title: string): PageDraft {
   };
 }
 
-async function renderWorkspaceWithPage(generationService: GenerationService) {
+function aiSettingsServiceFor(
+  overrides: Partial<{
+    effort: string;
+    hasApiKey: boolean;
+    model: string;
+    provider: string;
+  }> = {},
+) {
+  return {
+    loadSettings: vi.fn(async () => ({
+      availableProviders: [
+        {
+          id: 'xai',
+          label: 'xAI',
+          models: [{ id: 'grok-4.5', label: 'Grok 4.5', supportedEfforts: [] }],
+        },
+        {
+          id: 'openai',
+          label: 'OpenAI',
+          models: [
+            {
+              id: 'gpt-5.6-terra',
+              label: 'GPT-5.6 Terra',
+              supportedEfforts: ['none', 'low', 'medium', 'high', 'xhigh', 'max'],
+            },
+          ],
+        },
+        {
+          id: 'anthropic',
+          label: 'Anthropic',
+          models: [
+            {
+              id: 'claude-opus-4-6',
+              label: 'Claude Opus 4.6',
+              supportedEfforts: ['low', 'medium', 'high', 'max'],
+            },
+          ],
+        },
+      ],
+      effort: 'medium',
+      hasApiKey: true,
+      model: 'grok-4.5',
+      provider: 'xai',
+      workspaceId: 'workspace-google-generation-user',
+      ...overrides,
+    })),
+    saveSettings: vi.fn(async (_workspaceId, input) => ({
+      availableProviders: [],
+      hasApiKey: Boolean(input.apiKey),
+      workspaceId: 'workspace-google-generation-user',
+      ...input,
+    })),
+  };
+}
+
+async function renderWorkspaceWithPage(
+  generationService: GenerationService,
+  workspaceAiSettingsService = aiSettingsServiceFor(),
+) {
   const authService = createLocalAuthService({
     initialUser: user,
     storageKey: 'generation-auth',
@@ -119,12 +178,13 @@ async function renderWorkspaceWithPage(generationService: GenerationService) {
       contentService={contentService}
       generationService={generationService}
       pageContextService={pageContextService}
+      workspaceAiSettingsService={workspaceAiSettingsService}
       workspaceService={workspaceService}
     />,
   );
 
   await userEvent.click(await screen.findByRole('button', { name: /page 1 page/i }));
-  return { page, pageContextService };
+  return { page, pageContextService, workspace: workspace.workspace, workspaceAiSettingsService };
 }
 
 describe('generate action and generation visibility', () => {
@@ -142,9 +202,14 @@ describe('generate action and generation visibility', () => {
 
     expect(generationService.generateDraft).toHaveBeenCalledWith(
       expect.objectContaining({
+        ai: {
+          model: 'grok-4.5',
+          provider: 'xai',
+        },
         hierarchyPath: ['Category 1', 'Page 1'],
         pageId: page.id,
         pageTitle: 'Page 1',
+        workspaceId: 'workspace-google-generation-user',
         pageContext: expect.objectContaining({
           inputs: [expect.objectContaining({ content: 'Focus on the launch narrative.' })],
         }),
@@ -212,6 +277,35 @@ describe('generate action and generation visibility', () => {
     );
     expect((await pageContextService.loadPageContext(page.id)).draft?.title).toBe(
       'Generated launch page',
+    );
+  });
+
+  test('saves provider, model, effort, and workspace API key from the page inputs panel', async () => {
+    const generationService: GenerationService = {
+      generateDraft: vi.fn(),
+    };
+    const workspaceAiSettingsService = aiSettingsServiceFor();
+    await renderWorkspaceWithPage(generationService, workspaceAiSettingsService);
+    const inputsPanel = screen.getByRole('region', { name: /page inputs/i });
+
+    await userEvent.selectOptions(
+      await within(inputsPanel).findByLabelText(/ai provider/i),
+      'anthropic',
+    );
+    await userEvent.clear(within(inputsPanel).getByLabelText(/ai model/i));
+    await userEvent.type(within(inputsPanel).getByLabelText(/ai model/i), 'claude-opus-4-6');
+    await userEvent.selectOptions(within(inputsPanel).getByLabelText(/effort/i), 'medium');
+    await userEvent.type(within(inputsPanel).getByLabelText(/workspace api key/i), 'sk-ant-test');
+    await userEvent.click(within(inputsPanel).getByRole('button', { name: /save ai settings/i }));
+
+    expect(workspaceAiSettingsService.saveSettings).toHaveBeenCalledWith(
+      'workspace-google-generation-user',
+      {
+        apiKey: 'sk-ant-test',
+        effort: 'medium',
+        model: 'claude-opus-4-6',
+        provider: 'anthropic',
+      },
     );
   });
 });

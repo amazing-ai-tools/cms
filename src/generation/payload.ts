@@ -5,6 +5,9 @@ export interface GenerationPayload {
     family: string;
     filename: string;
     storageUrl: string;
+    mimeType: string;
+    sourceContent?: string;
+    sourceEncoding?: string;
   }>;
   inputs: Array<{
     content: string;
@@ -27,6 +30,9 @@ export function buildGenerationPayload(pageContext: PageContext): GenerationPayl
     assets: pageContext.assets.map((asset) => ({
       filename: asset.filename,
       family: asset.family,
+      mimeType: asset.mimeType,
+      sourceContent: asset.sourceContent,
+      sourceEncoding: asset.sourceEncoding,
       storageUrl: asset.storageUrl,
     })),
   };

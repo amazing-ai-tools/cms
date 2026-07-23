@@ -1,0 +1,22 @@
+[Unit]
+Description=CMS AI Generation API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/opt/cms/current
+Environment=NODE_ENV=production
+Environment=HOST=127.0.0.1
+Environment=PORT=8020
+Environment=AI_WORKSPACE_SETTINGS_FILE=/var/lib/cms/ai-workspace-settings.json
+ExecStart=/usr/bin/node server/index.js
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

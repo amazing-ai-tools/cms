@@ -109,6 +109,19 @@ function materialFamilyFor(filename: string, mimeType: string): MaterialFamily {
     return 'word';
   }
 
+  if (
+    mimeType.startsWith('text/') ||
+    mimeType === 'application/json' ||
+    mimeType === 'application/ld+json' ||
+    mimeType === 'application/xml' ||
+    lowerFilename.endsWith('.csv') ||
+    lowerFilename.endsWith('.json') ||
+    lowerFilename.endsWith('.md') ||
+    lowerFilename.endsWith('.txt')
+  ) {
+    return 'document';
+  }
+
   throw new Error(`${filename} is not a supported material.`);
 }
 
@@ -138,6 +151,8 @@ export function createLocalPageContextService(
           input.filename,
         )}`,
         cdnUrl: null,
+        sourceContent: input.sourceContent,
+        sourceEncoding: input.sourceEncoding,
         uploadState: 'uploaded',
         createdAt: new Date().toISOString(),
       };

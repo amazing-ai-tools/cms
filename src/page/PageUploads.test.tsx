@@ -85,7 +85,7 @@ describe('page material uploads', () => {
     }
   });
 
-  test('shows a failure state for unsupported file families', async () => {
+  test('uploads text documents as analyzable page materials', async () => {
     const inputsPanel = await renderWorkspaceWithPage();
     const uploadInput = within(inputsPanel).getByLabelText(/attach materials/i);
     const text = new File(['notes'], 'notes.txt', { type: 'text/plain' });
@@ -93,9 +93,10 @@ describe('page material uploads', () => {
     await userEvent.upload(uploadInput, text);
     await userEvent.click(within(inputsPanel).getByRole('button', { name: /send/i }));
 
-    expect(await within(inputsPanel).findByRole('alert')).toHaveTextContent(
-      /notes.txt is not a supported material/i,
-    );
-    expect(within(inputsPanel).queryByText(/uploaded/i)).not.toBeInTheDocument();
+    const asset = await within(inputsPanel).findByText('notes.txt');
+    const assetCard = asset.closest('article');
+    expect(assetCard).not.toBeNull();
+    expect(assetCard!).toHaveTextContent(/document/i);
+    expect(assetCard!).toHaveTextContent(/uploaded/i);
   });
 });

@@ -20,6 +20,14 @@ Required repository variables:
 - `RUNNER_LABEL`
 - `HOSTING_PROVIDER`
 
+Optional repository variables for overriding the production AI API host:
+
+- `VITE_GENERATION_API_URL`
+- `VITE_AI_SETTINGS_API_BASE_URL`
+
+When these are not set, the production frontend at `cms.app.amazing-ai.tools` calls
+`https://cms.api.amazing-ai.tools`.
+
 Required repository variables when Azure CDN origin upload is enabled:
 
 - `AZURE_CLIENT_ID`
@@ -35,3 +43,19 @@ Required repository secret for the current `cloudflare_pages` hosting provider:
 Required repository secret for `azure_static_web_app` hosting:
 
 - `AZURE_STATIC_WEB_APPS_API_TOKEN`
+
+## CMS AI Generation API
+
+The Generate button uses a Node API deployed on the VPS:
+
+- `GET /healthz`
+- `GET /api/workspaces/:workspaceId/ai-settings`
+- `PUT /api/workspaces/:workspaceId/ai-settings`
+- `POST /api/generation/draft`
+
+Provider API keys are saved per workspace through the settings endpoint and stored only on the
+server at `AI_WORKSPACE_SETTINGS_FILE`. The browser receives `hasApiKey`, provider, model, and
+effort metadata, never the key value.
+
+Supported providers are `xai`, `openai`, and `anthropic`. The frontend sends reasoning effort only
+for provider/model combinations that advertise support.

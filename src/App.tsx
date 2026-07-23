@@ -8,8 +8,10 @@ import type { GenerationService } from './generation/types';
 import { createLocalPageContextService } from './page/localPageContextService';
 import { PageDraftPreview } from './page/PageDraftPreview';
 import type { PageContext, PageContextService } from './page/types';
+import { createLocalWorkspaceAiSettingsService } from './workspace/localWorkspaceAiSettingsService';
 import { createLocalWorkspaceService } from './workspace/localWorkspaceService';
 import { WorkspaceShell } from './workspace/WorkspaceShell';
+import type { WorkspaceAiSettingsService } from './workspace/aiSettings';
 import type { Workspace, WorkspaceService } from './workspace/types';
 
 interface AppProps {
@@ -17,6 +19,7 @@ interface AppProps {
   contentService?: ContentService;
   generationService?: GenerationService;
   pageContextService?: PageContextService;
+  workspaceAiSettingsService?: WorkspaceAiSettingsService;
   workspaceService?: WorkspaceService;
 }
 
@@ -36,6 +39,7 @@ const defaultWorkspaceService = createLocalWorkspaceService();
 const defaultContentService = createLocalContentService();
 const defaultGenerationService = createLocalGenerationService();
 const defaultPageContextService = createLocalPageContextService();
+const defaultWorkspaceAiSettingsService = createLocalWorkspaceAiSettingsService();
 
 type PreviewAuthState =
   | { status: 'loading'; session: null; error: '' }
@@ -237,6 +241,7 @@ export function App({
   contentService = defaultContentService,
   generationService = defaultGenerationService,
   pageContextService = defaultPageContextService,
+  workspaceAiSettingsService = defaultWorkspaceAiSettingsService,
   workspaceService = defaultWorkspaceService,
 }: AppProps) {
   const previewNodeId = previewNodeIdFrom(window.location.pathname);
@@ -410,11 +415,12 @@ export function App({
       </section>
       {workspaceState.status === 'ready' ? (
         <WorkspaceShell
-          contentService={contentService}
-          generationService={generationService}
-          pageContextService={pageContextService}
-          workspace={workspaceState.workspace}
-        />
+            contentService={contentService}
+            generationService={generationService}
+            pageContextService={pageContextService}
+            workspace={workspaceState.workspace}
+            workspaceAiSettingsService={workspaceAiSettingsService}
+          />
       ) : null}
     </main>
   );

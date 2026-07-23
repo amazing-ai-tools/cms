@@ -83,6 +83,8 @@ jobs:
           VITE_BUGZERO_WIDGET_URL: ${{ vars.BUGZERO_WIDGET_URL }}
           VITE_GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
           VITE_GOOGLE_CALLBACK_URL: ${{ vars.GOOGLE_CALLBACK_URL }}
+          VITE_GENERATION_API_URL: ${{ vars.VITE_GENERATION_API_URL }}
+          VITE_AI_SETTINGS_API_BASE_URL: ${{ vars.VITE_AI_SETTINGS_API_BASE_URL }}
 
       - name: Deploy to Azure Static Web Apps
         if: ${{ vars.HOSTING_PROVIDER == '' || vars.HOSTING_PROVIDER == 'azure_static_web_app' }}

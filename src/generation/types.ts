@@ -11,10 +11,16 @@ export interface GenerationJob {
 }
 
 export interface GenerationRequest {
+  ai?: {
+    effort?: string;
+    model: string;
+    provider: string;
+  };
   hierarchyPath: string[];
   pageContext: PageContext;
   pageId: string;
   pageTitle: string;
+  workspaceId?: string;
 }
 
 export interface GenerationResult {
