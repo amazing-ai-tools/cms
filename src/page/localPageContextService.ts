@@ -15,6 +15,7 @@ import type {
 import { validatePageDraft } from './draftSchema';
 
 interface LocalPageContextServiceOptions {
+  failPublish?: boolean;
   storageKey?: string;
 }
 
@@ -115,6 +116,7 @@ export function createLocalPageContextService(
   options: LocalPageContextServiceOptions = {},
 ): PageContextService {
   const storageKey = options.storageKey ?? 'assisted-cms.page-context';
+  const failPublish = options.failPublish ?? false;
 
   return {
     async addAsset(input: AddPageAssetInput): Promise<PageAsset> {
@@ -173,7 +175,27 @@ export function createLocalPageContextService(
       };
     },
 
+    async getActivePublishedVersion(pageId: string): Promise<PublishedVersion | null> {
+      const storage = readStorage(storageKey);
+      const publication = storage.publications.find(
+        (candidate) => candidate.pageId === pageId && candidate.status === 'published',
+      );
+      if (!publication) {
+        return null;
+      }
+
+      return (
+        storage.versions.find(
+          (version) => version.pageId === pageId && version.id === publication.activeVersionId,
+        ) ?? null
+      );
+    },
+
     async publishDraft(input: PublishDraftInput): Promise<PublishedVersion> {
+      if (failPublish) {
+        throw new Error('Publish failed before the active version changed.');
+      }
+
       const storage = readStorage(storageKey);
       const draftIndex = storage.drafts.findIndex((draft) => draft.pageId === input.pageId);
       const draft = draftIndex >= 0 ? storage.drafts[draftIndex] : null;
@@ -214,6 +236,20 @@ export function createLocalPageContextService(
 
       storage.versions.push(version);
       storage.nextVersionId += 1;
+      const publication: PagePublication = {
+        pageId: input.pageId,
+        activeVersionId: version.id,
+        lastPublishedAt: timestamp,
+        status: 'published',
+      };
+      const publicationIndex = storage.publications.findIndex(
+        (candidate) => candidate.pageId === input.pageId,
+      );
+      if (publicationIndex >= 0) {
+        storage.publications[publicationIndex] = publication;
+      } else {
+        storage.publications.push(publication);
+      }
       storage.drafts[draftIndex] = {
         ...draft,
         isDirty: false,

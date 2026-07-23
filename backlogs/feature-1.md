@@ -334,7 +334,7 @@ Technical Notes:
 - Use transactional behavior where possible so version creation and active version update do not diverge.
 - Record the user and timestamp for each publish.
 
-### Story 5.2: Active Functional Version
+### [DONE] Story 5.2: Active Functional Version
 
 As a content manager, I want the latest published version to become active so external sites load the intended content.
 

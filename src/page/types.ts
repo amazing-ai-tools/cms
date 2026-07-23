@@ -157,6 +157,7 @@ export interface PageContext {
 export interface PageContextService {
   addAsset(input: AddPageAssetInput): Promise<PageAsset>;
   addInput(input: AddPageInputInput): Promise<PageInput>;
+  getActivePublishedVersion(pageId: string): Promise<PublishedVersion | null>;
   loadPageContext(pageId: string): Promise<PageContext>;
   publishDraft(input: PublishDraftInput): Promise<PublishedVersion>;
   saveDraft(input: SavePageDraftInput): Promise<PageDraft>;
