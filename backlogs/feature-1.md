@@ -369,7 +369,7 @@ Technical Notes:
 
 ## Epic 6: CDN Publication And External Embed
 
-### Story 6.1: Build Publishable Asset Manifest
+### [DONE] Story 6.1: Build Publishable Asset Manifest
 
 As a content manager, I want published page content, JavaScript, and media assets packaged for CDN delivery.
 

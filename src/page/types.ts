@@ -123,6 +123,7 @@ export interface PublishedVersion {
   layoutSnapshot: PageDraftLayout;
   visualSnapshot: PageDraftVisual;
   assetManifest: PublishedAssetReference[];
+  manifest: PublishableAssetManifest;
   cdnUrls: {
     content: string;
     media: string[];
@@ -138,6 +139,24 @@ export interface PagePublication {
   activeVersionId: string;
   lastPublishedAt: string;
   status: 'publishing' | 'published' | 'failed';
+}
+
+export interface PublishableAssetManifest {
+  pageId: string;
+  versionId: string;
+  versionNumber: number;
+  rendererScriptUrl: string;
+  content: {
+    title: string;
+    blocks: PageDraftBlock[];
+    layout: PageDraftLayout;
+    visual: PageDraftVisual;
+  };
+  mediaAssets: PublishedAssetReference[];
+  cache: {
+    immutable: boolean;
+    scope: 'version';
+  };
 }
 
 export interface PublishDraftInput {

@@ -13,6 +13,7 @@ import type {
   SavePageDraftInput,
 } from './types';
 import { validatePageDraft } from './draftSchema';
+import { buildPublishableManifest } from '../publication/manifest';
 
 interface LocalPageContextServiceOptions {
   failPublish?: boolean;
@@ -209,7 +210,7 @@ export function createLocalPageContextService(
       const versionNumber =
         storage.versions.filter((version) => version.pageId === input.pageId).length + 1;
       const pageAssets = storage.assets.filter((asset) => asset.pageId === input.pageId);
-      const version: PublishedVersion = {
+      const versionSnapshot = {
         id: `version-${storage.nextVersionId}`,
         pageId: input.pageId,
         versionNumber,
@@ -232,6 +233,10 @@ export function createLocalPageContextService(
         embedUrl: '',
         createdAt: timestamp,
         createdBy: input.createdBy,
+      };
+      const version: PublishedVersion = {
+        ...versionSnapshot,
+        manifest: buildPublishableManifest(versionSnapshot),
       };
 
       storage.versions.push(version);
