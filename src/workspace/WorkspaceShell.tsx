@@ -1,10 +1,12 @@
 import React from 'react';
 import { FileText, FolderTree, MessageSquareText, Plus, Sparkles } from 'lucide-react';
 import type { ContentNode, ContentNodeType, ContentService } from '../content/types';
+import type { PageContext, PageContextService } from '../page/types';
 import type { Workspace } from './types';
 
 interface WorkspaceShellProps {
   contentService: ContentService;
+  pageContextService: PageContextService;
   workspace: Workspace;
 }
 
@@ -74,11 +76,22 @@ function TreeNodes({
   );
 }
 
-export function WorkspaceShell({ contentService, workspace }: WorkspaceShellProps) {
+export function WorkspaceShell({
+  contentService,
+  pageContextService,
+  workspace,
+}: WorkspaceShellProps) {
   const [nodes, setNodes] = React.useState<ContentNode[]>([]);
   const [selectedNodeId, setSelectedNodeId] = React.useState<string | null>(null);
+  const [pageContext, setPageContext] = React.useState<PageContext | null>(null);
   const [error, setError] = React.useState('');
   const selectedNode = nodes.find((node) => node.id === selectedNodeId) ?? null;
+  const selectionStorageKey = `assisted-cms.selected-node.${workspace.id}`;
+
+  function handleSelectNode(nodeId: string) {
+    setSelectedNodeId(nodeId);
+    window.localStorage.setItem(selectionStorageKey, nodeId);
+  }
 
   React.useEffect(() => {
     let isMounted = true;
@@ -86,13 +99,35 @@ export function WorkspaceShell({ contentService, workspace }: WorkspaceShellProp
     contentService.listNodes(workspace.id).then((loadedNodes) => {
       if (isMounted) {
         setNodes(loadedNodes);
+        const storedSelection = window.localStorage.getItem(selectionStorageKey);
+        if (storedSelection && loadedNodes.some((node) => node.id === storedSelection)) {
+          setSelectedNodeId(storedSelection);
+        }
       }
     });
 
     return () => {
       isMounted = false;
     };
-  }, [contentService, workspace.id]);
+  }, [contentService, selectionStorageKey, workspace.id]);
+
+  React.useEffect(() => {
+    if (selectedNode?.type !== 'page') {
+      setPageContext(null);
+      return;
+    }
+
+    let isMounted = true;
+    pageContextService.loadPageContext(selectedNode.id).then((loadedContext) => {
+      if (isMounted) {
+        setPageContext(loadedContext);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [pageContextService, selectedNode]);
 
   async function handleCreate(type: ContentNodeType, parentId: string | null) {
     const parent = parentId ? nodes.find((node) => node.id === parentId) ?? null : null;
@@ -106,7 +141,7 @@ export function WorkspaceShell({ contentService, workspace }: WorkspaceShellProp
         title: defaultTitleFor(type, nodes, parent),
       });
       setNodes(await contentService.listNodes(workspace.id));
-      setSelectedNodeId(node.id);
+      handleSelectNode(node.id);
     } catch (creationError) {
       setError(
         creationError instanceof Error
@@ -142,11 +177,15 @@ export function WorkspaceShell({ contentService, workspace }: WorkspaceShellProp
             nodes={nodes}
             parentId={null}
             selectedNodeId={selectedNodeId}
-            onSelect={setSelectedNodeId}
+            onSelect={handleSelectNode}
           />
         )}
         <div className="hierarchy-actions" aria-label="Hierarchy creation actions">
-          <button className="button secondary icon-label neutral" type="button" onClick={() => handleCreate('category', null)}>
+          <button
+            className="button secondary icon-label neutral"
+            type="button"
+            onClick={() => handleCreate('category', null)}
+          >
             <Plus size={16} />
             Create category
           </button>
@@ -227,8 +266,22 @@ export function WorkspaceShell({ contentService, workspace }: WorkspaceShellProp
           <h2 id="page-inputs-title">Page inputs</h2>
         </div>
         <div className="chat-empty">
-          <strong>Inputs are page-specific</strong>
-          <p>Select a page to collect inputs.</p>
+          {selectedNode?.type === 'page' ? (
+            <>
+              <strong>Inputs for {selectedNode.title}</strong>
+              <p>No inputs have been added to this page.</p>
+              <ul className="context-list">
+                <li>Draft: {pageContext?.draft ? 'generated' : 'not generated'}</li>
+                <li>Versions: {pageContext?.versions.length ?? 0}</li>
+                <li>Active version: {pageContext?.activePublication ? 'published' : 'none'}</li>
+              </ul>
+            </>
+          ) : (
+            <>
+              <strong>Inputs are page-specific</strong>
+              <p>Select a page to collect inputs.</p>
+            </>
+          )}
         </div>
         <fieldset className="chat-composer" disabled>
           <label htmlFor="idea-input">Idea or content description</label>

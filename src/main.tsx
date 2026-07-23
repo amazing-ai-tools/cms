@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { App } from './App';
 import { createLocalAuthService } from './auth/localAuthService';
 import { createLocalContentService } from './content/localContentService';
+import { createLocalPageContextService } from './page/localPageContextService';
 import { createLocalWorkspaceService } from './workspace/localWorkspaceService';
 import './styles.css';
 
@@ -36,9 +37,15 @@ const workspaceService = createLocalWorkspaceService({
 const contentService = createLocalContentService({
   storageKey: `assisted-cms.content.${googleClientId || googleCallbackUrl}`,
 });
+const pageContextService = createLocalPageContextService();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <App authService={authService} contentService={contentService} workspaceService={workspaceService} />
+    <App
+      authService={authService}
+      contentService={contentService}
+      pageContextService={pageContextService}
+      workspaceService={workspaceService}
+    />
   </React.StrictMode>,
 );

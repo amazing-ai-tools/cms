@@ -328,6 +328,16 @@ p {
   margin-top: 28px;
 }
 
+.context-list {
+  display: grid;
+  gap: 6px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+  color: #394052;
+  font-size: 0.9rem;
+}
+
 .chat-composer {
   display: grid;
   gap: 10px;

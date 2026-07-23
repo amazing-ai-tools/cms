@@ -154,7 +154,7 @@ Technical Notes:
 - Generate sensible default titles for new nodes and allow page titles to be edited through the page editing story.
 - Add tests for valid and invalid parent selections.
 
-### Story 2.3: Select And Load Page Context
+### [DONE] Story 2.3: Select And Load Page Context
 
 As a content manager, I want selecting a page to load that page's draft, inputs, versions, and publication state.
 
