@@ -235,6 +235,13 @@ p {
   margin-top: 4px;
 }
 
+.preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .empty-state,
 .preview-empty,
 .chat-empty {

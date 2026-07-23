@@ -317,7 +317,7 @@ Technical Notes:
 
 ## Epic 5: Publish Workflow, Versioning, And CMS Version Navigation
 
-### Story 5.1: Publish Draft To Version
+### [DONE] Story 5.1: Publish Draft To Version
 
 As a content manager, I want publishing to create a version so I can control what is functional and active.
 

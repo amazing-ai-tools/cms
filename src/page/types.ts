@@ -140,6 +140,11 @@ export interface PagePublication {
   status: 'publishing' | 'published' | 'failed';
 }
 
+export interface PublishDraftInput {
+  pageId: string;
+  createdBy: string;
+}
+
 export interface PageContext {
   pageId: string;
   assets: PageAsset[];
@@ -153,5 +158,6 @@ export interface PageContextService {
   addAsset(input: AddPageAssetInput): Promise<PageAsset>;
   addInput(input: AddPageInputInput): Promise<PageInput>;
   loadPageContext(pageId: string): Promise<PageContext>;
+  publishDraft(input: PublishDraftInput): Promise<PublishedVersion>;
   saveDraft(input: SavePageDraftInput): Promise<PageDraft>;
 }

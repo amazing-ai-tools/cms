@@ -1,5 +1,13 @@
 import React from 'react';
-import { AlertCircle, FileText, FolderTree, MessageSquareText, Plus, Sparkles } from 'lucide-react';
+import {
+  AlertCircle,
+  FileText,
+  FolderTree,
+  MessageSquareText,
+  Plus,
+  Sparkles,
+  UploadCloud,
+} from 'lucide-react';
 import type { ContentNode, ContentNodeType, ContentService } from '../content/types';
 import type { GenerationJob, GenerationService } from '../generation/types';
 import { PageDraftEditor } from '../page/PageDraftEditor';
@@ -130,6 +138,8 @@ export function WorkspaceShell({
   const [linkError, setLinkError] = React.useState('');
   const [uploadError, setUploadError] = React.useState('');
   const [generationJob, setGenerationJob] = React.useState<GenerationJob | null>(null);
+  const [isPublishing, setIsPublishing] = React.useState(false);
+  const [publishError, setPublishError] = React.useState('');
   const [error, setError] = React.useState('');
   const selectedNode = nodes.find((node) => node.id === selectedNodeId) ?? null;
   const isGenerating = generationJob?.status === 'queued' || generationJob?.status === 'running';
@@ -138,6 +148,7 @@ export function WorkspaceShell({
   function handleSelectNode(nodeId: string) {
     setSelectedNodeId(nodeId);
     setGenerationJob(null);
+    setPublishError('');
     window.localStorage.setItem(selectionStorageKey, nodeId);
   }
 
@@ -302,21 +313,49 @@ export function WorkspaceShell({
       return;
     }
 
+    const dirtyDraft = {
+      ...nextDraft,
+      isDirty: true,
+    };
+
     setError('');
     setPageContext((currentContext) =>
       currentContext
         ? {
             ...currentContext,
-            draft: nextDraft,
+            draft: dirtyDraft,
           }
         : currentContext,
     );
 
     try {
-      await pageContextService.saveDraft(nextDraft);
+      await pageContextService.saveDraft(dirtyDraft);
     } catch (draftError) {
       setError(draftError instanceof Error ? draftError.message : 'Draft changes could not be saved.');
       setPageContext(await pageContextService.loadPageContext(selectedNode.id));
+    }
+  }
+
+  async function handlePublishDraft() {
+    if (selectedNode?.type !== 'page' || !pageContext?.draft) {
+      return;
+    }
+
+    setIsPublishing(true);
+    setPublishError('');
+
+    try {
+      await pageContextService.publishDraft({
+        createdBy: workspace.ownerUserId,
+        pageId: selectedNode.id,
+      });
+      setPageContext(await pageContextService.loadPageContext(selectedNode.id));
+    } catch (publishFailure) {
+      setPublishError(
+        publishFailure instanceof Error ? publishFailure.message : 'Draft could not be published.',
+      );
+    } finally {
+      setIsPublishing(false);
     }
   }
 
@@ -407,16 +446,32 @@ export function WorkspaceShell({
             <span className="eyebrow">Selected page</span>
             <h2 id="page-preview-title">Page preview</h2>
           </div>
-          <button
-            className="button icon-label"
-            type="button"
-            disabled={selectedNode?.type !== 'page' || isGenerating}
-            onClick={handleGenerate}
-          >
-            <Sparkles size={16} />
-            {isGenerating ? 'Generating' : 'Generate'}
-          </button>
+          <div className="preview-actions">
+            <button
+              className="button icon-label"
+              type="button"
+              disabled={selectedNode?.type !== 'page' || isGenerating}
+              onClick={handleGenerate}
+            >
+              <Sparkles size={16} />
+              {isGenerating ? 'Generating' : 'Generate'}
+            </button>
+            <button
+              className="button secondary icon-label neutral"
+              type="button"
+              disabled={selectedNode?.type !== 'page' || !pageContext?.draft || isPublishing}
+              onClick={handlePublishDraft}
+            >
+              <UploadCloud size={16} />
+              {isPublishing ? 'Publishing' : 'Publish draft'}
+            </button>
+          </div>
         </div>
+        {publishError ? (
+          <div className="auth-error compact" role="alert">
+            {publishError}
+          </div>
+        ) : null}
         {generationJob ? (
           <div className={`generation-status ${generationJob.status}`} aria-live="polite">
             <strong>{generationStatusLabel(generationJob)}</strong>

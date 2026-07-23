@@ -8,6 +8,7 @@ import type {
   PageContextService,
   PageDraft,
   PageInput,
+  PublishDraftInput,
   PublishedVersion,
   SavePageDraftInput,
 } from './types';
@@ -24,6 +25,7 @@ interface PageContextStorage {
   nextAssetId: number;
   nextDraftId: number;
   nextInputId: number;
+  nextVersionId: number;
   publications: PagePublication[];
   versions: PublishedVersion[];
 }
@@ -36,6 +38,7 @@ function emptyStorage(): PageContextStorage {
     nextAssetId: 1,
     nextDraftId: 1,
     nextInputId: 1,
+    nextVersionId: 1,
     publications: [],
     versions: [],
   };
@@ -63,6 +66,7 @@ function readStorage(storageKey: string): PageContextStorage {
       nextAssetId: parsed.nextAssetId ?? 1,
       nextDraftId: parsed.nextDraftId ?? 1,
       nextInputId: parsed.nextInputId ?? 1,
+      nextVersionId: parsed.nextVersionId ?? 1,
       publications: parsed.publications ?? [],
       versions: parsed.versions ?? [],
     };
@@ -101,6 +105,10 @@ function materialFamilyFor(filename: string, mimeType: string): MaterialFamily {
   }
 
   throw new Error(`${filename} is not a supported material.`);
+}
+
+function copySnapshot<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
 }
 
 export function createLocalPageContextService(
@@ -163,6 +171,57 @@ export function createLocalPageContextService(
         activePublication:
           storage.publications.find((publication) => publication.pageId === pageId) ?? null,
       };
+    },
+
+    async publishDraft(input: PublishDraftInput): Promise<PublishedVersion> {
+      const storage = readStorage(storageKey);
+      const draftIndex = storage.drafts.findIndex((draft) => draft.pageId === input.pageId);
+      const draft = draftIndex >= 0 ? storage.drafts[draftIndex] : null;
+      if (!draft) {
+        throw new Error('Draft must exist before publishing.');
+      }
+
+      validatePageDraft(draft);
+
+      const timestamp = new Date().toISOString();
+      const versionNumber =
+        storage.versions.filter((version) => version.pageId === input.pageId).length + 1;
+      const pageAssets = storage.assets.filter((asset) => asset.pageId === input.pageId);
+      const version: PublishedVersion = {
+        id: `version-${storage.nextVersionId}`,
+        pageId: input.pageId,
+        versionNumber,
+        title: draft.title,
+        contentSnapshot: copySnapshot(draft.blocks),
+        layoutSnapshot: copySnapshot(draft.layout),
+        visualSnapshot: copySnapshot(draft.visual),
+        assetManifest: pageAssets.map((asset) => ({
+          assetId: asset.id,
+          filename: asset.filename,
+          mimeType: asset.mimeType,
+          storageUrl: asset.storageUrl,
+          cdnUrl: asset.cdnUrl,
+        })),
+        cdnUrls: {
+          content: '',
+          media: [],
+          script: '',
+        },
+        embedUrl: '',
+        createdAt: timestamp,
+        createdBy: input.createdBy,
+      };
+
+      storage.versions.push(version);
+      storage.nextVersionId += 1;
+      storage.drafts[draftIndex] = {
+        ...draft,
+        isDirty: false,
+        updatedAt: timestamp,
+      };
+      writeStorage(storageKey, storage);
+
+      return version;
     },
 
     async saveDraft(input: SavePageDraftInput): Promise<PageDraft> {
