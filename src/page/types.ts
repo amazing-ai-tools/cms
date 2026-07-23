@@ -1,4 +1,4 @@
-export type PageInputType = 'idea' | 'description' | 'link' | 'upload';
+export type PageInputType = 'instruction' | 'idea' | 'description' | 'link' | 'upload';
 export type MaterialFamily = 'image' | 'media' | 'pdf' | 'word';
 
 export interface PageInput {

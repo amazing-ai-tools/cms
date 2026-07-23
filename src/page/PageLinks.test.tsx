@@ -62,8 +62,8 @@ describe('page link capture', () => {
   test('rejects invalid URLs with a visible message', async () => {
     const { inputsPanel } = await renderWorkspaceWithPage();
 
-    await userEvent.type(within(inputsPanel).getByLabelText(/reference link/i), 'not a url');
-    await userEvent.click(within(inputsPanel).getByRole('button', { name: /add link/i }));
+    await userEvent.type(within(inputsPanel).getByLabelText(/message the page ai/i), 'Review https://bad');
+    await userEvent.click(within(inputsPanel).getByRole('button', { name: /send/i }));
 
     expect(await within(inputsPanel).findByRole('alert')).toHaveTextContent(/enter a valid url/i);
   });
@@ -72,10 +72,10 @@ describe('page link capture', () => {
     const { inputsPanel, page, pageContextService } = await renderWorkspaceWithPage();
 
     await userEvent.type(
-      within(inputsPanel).getByLabelText(/reference link/i),
-      'example.com/launch-brief',
+      within(inputsPanel).getByLabelText(/message the page ai/i),
+      'Review example.com/launch-brief before generating.',
     );
-    await userEvent.click(within(inputsPanel).getByRole('button', { name: /add link/i }));
+    await userEvent.click(within(inputsPanel).getByRole('button', { name: /send/i }));
 
     expect(await within(inputsPanel).findByText('https://example.com/launch-brief')).toBeInTheDocument();
     const pageContext = await pageContextService.loadPageContext(page.id);

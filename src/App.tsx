@@ -6,7 +6,8 @@ import type { ContentService } from './content/types';
 import { createLocalGenerationService } from './generation/localGenerationService';
 import type { GenerationService } from './generation/types';
 import { createLocalPageContextService } from './page/localPageContextService';
-import type { PageContextService } from './page/types';
+import { PageDraftPreview } from './page/PageDraftPreview';
+import type { PageContext, PageContextService } from './page/types';
 import { createLocalWorkspaceService } from './workspace/localWorkspaceService';
 import { WorkspaceShell } from './workspace/WorkspaceShell';
 import type { Workspace, WorkspaceService } from './workspace/types';
@@ -36,21 +37,71 @@ const defaultContentService = createLocalContentService();
 const defaultGenerationService = createLocalGenerationService();
 const defaultPageContextService = createLocalPageContextService();
 
-export function App({
+type PreviewAuthState =
+  | { status: 'loading'; session: null; error: '' }
+  | { status: 'signed-out'; session: null; error: string }
+  | { status: 'signed-in'; session: AuthSession; error: '' };
+
+type DraftPreviewState =
+  | { status: 'loading'; context: null; error: '' }
+  | { status: 'ready'; context: PageContext; error: '' }
+  | { status: 'error'; context: null; error: string };
+
+function previewNodeIdFrom(pathname: string) {
+  const match = pathname.match(/^\/preview\/([^/?#]+)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+function GoogleSignInGate({
+  error,
+  onGoogleSignIn,
+}: {
+  error: string;
+  onGoogleSignIn: () => void;
+}) {
+  return (
+    <main className="auth-screen">
+      <section className="auth-panel" aria-labelledby="auth-title">
+        <span className="eyebrow">
+          <ShieldCheck size={16} />
+          Google authenticated CMS
+        </span>
+        <h1 id="auth-title">Assisted Multi-Site Content CMS</h1>
+        <p>
+          Sign in with Google to open your content workspace and keep draft, media, and published
+          page records tied to your account.
+        </p>
+        {error ? (
+          <div className="auth-error" role="alert">
+            <AlertCircle size={18} />
+            <span>{error}</span>
+          </div>
+        ) : null}
+        <button className="button primary" type="button" onClick={onGoogleSignIn}>
+          {error ? 'Try again' : 'Continue with Google'}
+        </button>
+      </section>
+    </main>
+  );
+}
+
+function AuthenticatedDraftPreviewRoute({
   authService,
-  contentService = defaultContentService,
-  generationService = defaultGenerationService,
-  pageContextService = defaultPageContextService,
-  workspaceService = defaultWorkspaceService,
-}: AppProps) {
-  const [authState, setAuthState] = React.useState<AuthViewState>({
+  pageContextService,
+  pageId,
+}: {
+  authService: AuthService;
+  pageContextService: PageContextService;
+  pageId: string;
+}) {
+  const [authState, setAuthState] = React.useState<PreviewAuthState>({
     status: 'loading',
     session: null,
     error: '',
   });
-  const [workspaceState, setWorkspaceState] = React.useState<WorkspaceViewState>({
-    status: 'idle',
-    workspace: null,
+  const [previewState, setPreviewState] = React.useState<DraftPreviewState>({
+    status: 'loading',
+    context: null,
     error: '',
   });
 
@@ -86,6 +137,160 @@ export function App({
   }, [authService]);
 
   React.useEffect(() => {
+    if (authState.status !== 'signed-in') {
+      return;
+    }
+
+    let isMounted = true;
+    setPreviewState({ status: 'loading', context: null, error: '' });
+
+    pageContextService
+      .loadPageContext(pageId)
+      .then((context) => {
+        if (isMounted) {
+          setPreviewState({ status: 'ready', context, error: '' });
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setPreviewState({
+            status: 'error',
+            context: null,
+            error: 'Draft preview could not be loaded.',
+          });
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [authState.status, pageContextService, pageId]);
+
+  async function handleGoogleSignIn() {
+    setAuthState({ status: 'loading', session: null, error: '' });
+
+    try {
+      const session = await authService.signInWithGoogle();
+      setAuthState({ status: 'signed-in', session, error: '' });
+    } catch (error) {
+      setAuthState({
+        status: 'signed-out',
+        session: null,
+        error: error instanceof Error ? error.message : 'Google authentication failed. Please try again.',
+      });
+    }
+  }
+
+  if (authState.status === 'loading') {
+    return (
+      <main className="standalone-preview-shell loading">
+        <p className="loading-text">Loading Google session...</p>
+      </main>
+    );
+  }
+
+  if (authState.status === 'signed-out') {
+    return <GoogleSignInGate error={authState.error} onGoogleSignIn={handleGoogleSignIn} />;
+  }
+
+  if (previewState.status === 'loading') {
+    return (
+      <main className="standalone-preview-shell loading">
+        <p className="loading-text">Loading draft preview...</p>
+      </main>
+    );
+  }
+
+  if (previewState.status === 'error') {
+    return (
+      <main className="standalone-preview-shell">
+        <div className="preview-empty">
+          <AlertCircle size={26} />
+          <strong>{previewState.error}</strong>
+          <p>Return to the CMS workspace and try opening the draft preview again.</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (!previewState.context.draft) {
+    return (
+      <main className="standalone-preview-shell">
+        <div className="preview-empty">
+          <AlertCircle size={26} />
+          <strong>No draft exists for this preview.</strong>
+          <p>Generate a draft in the CMS workspace before opening a private preview.</p>
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="standalone-preview-shell" data-page-id={pageId}>
+      <PageDraftPreview assets={previewState.context.assets} draft={previewState.context.draft} />
+    </main>
+  );
+}
+
+export function App({
+  authService,
+  contentService = defaultContentService,
+  generationService = defaultGenerationService,
+  pageContextService = defaultPageContextService,
+  workspaceService = defaultWorkspaceService,
+}: AppProps) {
+  const previewNodeId = previewNodeIdFrom(window.location.pathname);
+  const [authState, setAuthState] = React.useState<AuthViewState>({
+    status: 'loading',
+    session: null,
+    error: '',
+  });
+  const [workspaceState, setWorkspaceState] = React.useState<WorkspaceViewState>({
+    status: 'idle',
+    workspace: null,
+    error: '',
+  });
+
+  React.useEffect(() => {
+    if (previewNodeId) {
+      return;
+    }
+
+    let isMounted = true;
+
+    authService
+      .refreshSession()
+      .then((session) => {
+        if (!isMounted) {
+          return;
+        }
+
+        setAuthState(
+          session
+            ? { status: 'signed-in', session, error: '' }
+            : { status: 'signed-out', session: null, error: '' },
+        );
+      })
+      .catch(() => {
+        if (isMounted) {
+          setAuthState({
+            status: 'signed-out',
+            session: null,
+            error: 'Unable to restore your Google session. Please try again.',
+          });
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [authService, previewNodeId]);
+
+  React.useEffect(() => {
+    if (previewNodeId) {
+      return;
+    }
+
     if (authState.status !== 'signed-in') {
       setWorkspaceState({ status: 'idle', workspace: null, error: '' });
       return;
@@ -127,7 +332,7 @@ export function App({
     return () => {
       isMounted = false;
     };
-  }, [authState, workspaceService]);
+  }, [authState, previewNodeId, workspaceService]);
 
   async function handleGoogleSignIn() {
     setAuthState({ status: 'loading', session: null, error: '' });
@@ -150,6 +355,16 @@ export function App({
     setWorkspaceState({ status: 'idle', workspace: null, error: '' });
   }
 
+  if (previewNodeId) {
+    return (
+      <AuthenticatedDraftPreviewRoute
+        authService={authService}
+        pageContextService={pageContextService}
+        pageId={previewNodeId}
+      />
+    );
+  }
+
   if (authState.status === 'loading') {
     return (
       <main className="auth-screen">
@@ -159,30 +374,7 @@ export function App({
   }
 
   if (authState.status === 'signed-out') {
-    return (
-      <main className="auth-screen">
-        <section className="auth-panel" aria-labelledby="auth-title">
-          <span className="eyebrow">
-            <ShieldCheck size={16} />
-            Google authenticated CMS
-          </span>
-          <h1 id="auth-title">Assisted Multi-Site Content CMS</h1>
-          <p>
-            Sign in with Google to open your content workspace and keep draft, media, and published
-            page records tied to your account.
-          </p>
-          {authState.error ? (
-            <div className="auth-error" role="alert">
-              <AlertCircle size={18} />
-              <span>{authState.error}</span>
-            </div>
-          ) : null}
-          <button className="button primary" type="button" onClick={handleGoogleSignIn}>
-            {authState.error ? 'Try again' : 'Continue with Google'}
-          </button>
-        </section>
-      </main>
-    );
+    return <GoogleSignInGate error={authState.error} onGoogleSignIn={handleGoogleSignIn} />;
   }
 
   return (

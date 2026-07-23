@@ -60,7 +60,7 @@ async function renderWorkspaceWithPage() {
 describe('page material uploads', () => {
   test('uploads images, media, PDFs, and Word files against the selected page', async () => {
     const inputsPanel = await renderWorkspaceWithPage();
-    const uploadInput = within(inputsPanel).getByLabelText(/upload page materials/i);
+    const uploadInput = within(inputsPanel).getByLabelText(/attach materials/i);
     const image = new File(['image'], 'hero.png', { type: 'image/png' });
     const media = new File(['media'], 'launch.mp4', { type: 'video/mp4' });
     const pdf = new File(['pdf'], 'brief.pdf', { type: 'application/pdf' });
@@ -69,6 +69,7 @@ describe('page material uploads', () => {
     });
 
     await userEvent.upload(uploadInput, [image, media, pdf, word]);
+    await userEvent.click(within(inputsPanel).getByRole('button', { name: /send/i }));
 
     for (const [filename, family] of [
       ['hero.png', 'image'],
@@ -86,10 +87,11 @@ describe('page material uploads', () => {
 
   test('shows a failure state for unsupported file families', async () => {
     const inputsPanel = await renderWorkspaceWithPage();
-    const uploadInput = within(inputsPanel).getByLabelText(/upload page materials/i);
+    const uploadInput = within(inputsPanel).getByLabelText(/attach materials/i);
     const text = new File(['notes'], 'notes.txt', { type: 'text/plain' });
 
     await userEvent.upload(uploadInput, text);
+    await userEvent.click(within(inputsPanel).getByRole('button', { name: /send/i }));
 
     expect(await within(inputsPanel).findByRole('alert')).toHaveTextContent(
       /notes.txt is not a supported material/i,

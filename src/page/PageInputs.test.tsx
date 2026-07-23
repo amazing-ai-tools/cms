@@ -63,30 +63,56 @@ async function renderWorkspaceWithPages() {
 }
 
 describe('right-side page input panel', () => {
-  test('saves ideas and desired descriptions against the selected page in chronological order', async () => {
+  test('saves instructions and desired descriptions against the selected page in chronological order', async () => {
     await renderWorkspaceWithPages();
 
     await userEvent.click(screen.getByRole('button', { name: /page 1 page/i }));
     const inputsPanel = screen.getByRole('region', { name: /page inputs/i });
 
     await userEvent.type(
-      within(inputsPanel).getByLabelText(/idea or content description/i),
+      within(inputsPanel).getByLabelText(/message the page ai/i),
       'Use a concise launch narrative.',
     );
-    await userEvent.click(within(inputsPanel).getByRole('button', { name: /add input/i }));
+    await userEvent.click(within(inputsPanel).getByRole('button', { name: /send/i }));
     await userEvent.click(within(inputsPanel).getByRole('button', { name: /description/i }));
     await userEvent.type(
-      within(inputsPanel).getByLabelText(/idea or content description/i),
+      within(inputsPanel).getByLabelText(/message the page ai/i),
       'Describe the customer problem and the generated page goal.',
     );
-    await userEvent.click(within(inputsPanel).getByRole('button', { name: /add input/i }));
+    await userEvent.click(within(inputsPanel).getByRole('button', { name: /send/i }));
 
-    const entries = await within(inputsPanel).findAllByRole('article');
+    const inputFeed = await within(inputsPanel).findByLabelText(/saved inputs for page 1/i);
+    const entries = within(inputFeed).getAllByRole('article');
     expect(entries).toHaveLength(2);
-    expect(entries[0]).toHaveTextContent(/idea/i);
+    expect(entries[0]).toHaveTextContent(/instruction/i);
     expect(entries[0]).toHaveTextContent(/concise launch narrative/i);
     expect(entries[1]).toHaveTextContent(/description/i);
     expect(entries[1]).toHaveTextContent(/customer problem/i);
+  });
+
+  test('sends a chat instruction with reference links and materials together', async () => {
+    await renderWorkspaceWithPages();
+
+    await userEvent.click(screen.getByRole('button', { name: /page 1 page/i }));
+    const inputsPanel = screen.getByRole('region', { name: /page inputs/i });
+    const material = new File(['launch requirements'], 'brief.pdf', { type: 'application/pdf' });
+
+    await userEvent.type(
+      within(inputsPanel).getByLabelText(/message the page ai/i),
+      'Use this positioning and review example.com/source before generating.',
+    );
+    await userEvent.upload(within(inputsPanel).getByLabelText(/attach materials/i), material);
+    await userEvent.click(within(inputsPanel).getByRole('button', { name: /send/i }));
+
+    const inputFeed = await within(inputsPanel).findByLabelText(/saved inputs for page 1/i);
+    const entries = within(inputFeed).getAllByRole('article');
+    expect(entries).toHaveLength(2);
+    expect(entries[0]).toHaveTextContent(/instruction/i);
+    expect(entries[0]).toHaveTextContent(/use this positioning/i);
+    expect(entries[1]).toHaveTextContent(/link/i);
+    expect(entries[1]).toHaveTextContent('https://example.com/source');
+    expect(await within(inputsPanel).findByText('brief.pdf')).toBeInTheDocument();
+    expect(within(inputsPanel).getByText(/^pdf$/i)).toBeInTheDocument();
   });
 
   test('does not mix inputs between selected pages', async () => {
@@ -94,10 +120,10 @@ describe('right-side page input panel', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /page 1 page/i }));
     await userEvent.type(
-      screen.getByLabelText(/idea or content description/i),
+      screen.getByLabelText(/message the page ai/i),
       'Page one input only.',
     );
-    await userEvent.click(screen.getByRole('button', { name: /add input/i }));
+    await userEvent.click(screen.getByRole('button', { name: /send/i }));
 
     await userEvent.click(screen.getByRole('button', { name: /page 2 page/i }));
     expect(await screen.findByText(/inputs for page 2/i)).toBeInTheDocument();

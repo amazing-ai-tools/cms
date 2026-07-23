@@ -1,10 +1,13 @@
 import React from 'react';
 import {
   AlertCircle,
+  ExternalLink,
   FileText,
   FolderTree,
   MessageSquareText,
+  Paperclip,
   Plus,
+  Send,
   Sparkles,
   UploadCloud,
 } from 'lucide-react';
@@ -154,6 +157,19 @@ function draftForVersion(version: PublishedVersion): PageDraft {
   };
 }
 
+const referenceUrlPattern =
+  /\b(?:https?:\/\/[^\s<>"']+|(?:[a-z0-9-]+\.)+[a-z]{2,}(?:\/[^\s<>"']*)?)/gi;
+
+function trimUrlPunctuation(url: string) {
+  return url.replace(/[),.;!?]+$/g, '');
+}
+
+function referenceLinksFor(text: string) {
+  const rawUrls = text.match(referenceUrlPattern) ?? [];
+  const normalizedUrls = rawUrls.map((url) => normalizeUrl(trimUrlPunctuation(url)));
+  return Array.from(new Set(normalizedUrls));
+}
+
 export function WorkspaceShell({
   contentService,
   generationService,
@@ -163,16 +179,16 @@ export function WorkspaceShell({
   const [nodes, setNodes] = React.useState<ContentNode[]>([]);
   const [selectedNodeId, setSelectedNodeId] = React.useState<string | null>(null);
   const [pageContext, setPageContext] = React.useState<PageContext | null>(null);
-  const [inputType, setInputType] = React.useState<PageInputType>('idea');
+  const [inputType, setInputType] = React.useState<PageInputType>('instruction');
   const [inputText, setInputText] = React.useState('');
-  const [linkText, setLinkText] = React.useState('');
-  const [linkError, setLinkError] = React.useState('');
-  const [uploadError, setUploadError] = React.useState('');
+  const [pendingFiles, setPendingFiles] = React.useState<File[]>([]);
+  const [composerError, setComposerError] = React.useState('');
   const [generationJob, setGenerationJob] = React.useState<GenerationJob | null>(null);
   const [isPublishing, setIsPublishing] = React.useState(false);
   const [publishError, setPublishError] = React.useState('');
   const [selectedVersionId, setSelectedVersionId] = React.useState<string | null>(null);
   const [error, setError] = React.useState('');
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
   const selectedNode = nodes.find((node) => node.id === selectedNodeId) ?? null;
   const selectedVersion =
     pageContext?.versions.find((version) => version.id === selectedVersionId) ?? null;
@@ -193,6 +209,9 @@ export function WorkspaceShell({
     setGenerationJob(null);
     setPublishError('');
     setSelectedVersionId(null);
+    setComposerError('');
+    setPendingFiles([]);
+    setInputText('');
     window.localStorage.setItem(selectionStorageKey, nodeId);
   }
 
@@ -260,18 +279,56 @@ export function WorkspaceShell({
     }
   }
 
-  async function handleAddInput() {
-    if (!isPageCapableNode(selectedNode) || !inputText.trim()) {
+  function handleSelectMaterials(files: FileList | null) {
+    setPendingFiles(files ? Array.from(files) : []);
+    setComposerError('');
+  }
+
+  async function handleSendInput() {
+    if (!isPageCapableNode(selectedNode) || (!inputText.trim() && pendingFiles.length === 0)) {
       return;
     }
 
-    await pageContextService.addInput({
-      pageId: selectedNode.id,
-      type: inputType,
-      content: inputText,
-    });
-    setPageContext(await pageContextService.loadPageContext(selectedNode.id));
-    setInputText('');
+    try {
+      setComposerError('');
+      const links = referenceLinksFor(inputText);
+
+      if (inputText.trim()) {
+        await pageContextService.addInput({
+          pageId: selectedNode.id,
+          type: inputType,
+          content: inputText,
+        });
+      }
+
+      for (const link of links) {
+        await pageContextService.addInput({
+          pageId: selectedNode.id,
+          type: 'link',
+          content: link,
+        });
+      }
+
+      for (const file of pendingFiles) {
+        await pageContextService.addAsset({
+          pageId: selectedNode.id,
+          filename: file.name,
+          mimeType: file.type,
+          size: file.size,
+        });
+      }
+
+      setPageContext(await pageContextService.loadPageContext(selectedNode.id));
+      setInputText('');
+      setPendingFiles([]);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    } catch (sendFailure) {
+      setComposerError(
+        sendFailure instanceof Error ? sendFailure.message : 'Page input could not be sent.',
+      );
+    }
   }
 
   async function handleGenerate() {
@@ -312,50 +369,6 @@ export function WorkspaceShell({
         status: 'failed',
         steps: [...runningJob.steps, 'Generation failed'],
       });
-    }
-  }
-
-  async function handleAddLink() {
-    if (!isPageCapableNode(selectedNode)) {
-      return;
-    }
-
-    try {
-      setLinkError('');
-      const normalizedUrl = normalizeUrl(linkText);
-      await pageContextService.addInput({
-        pageId: selectedNode.id,
-        type: 'link',
-        content: normalizedUrl,
-      });
-      setPageContext(await pageContextService.loadPageContext(selectedNode.id));
-      setLinkText('');
-    } catch {
-      setLinkError('Enter a valid URL.');
-    }
-  }
-
-  async function handleUploadMaterials(files: FileList | null) {
-    if (!isPageCapableNode(selectedNode) || !files) {
-      return;
-    }
-
-    setUploadError('');
-
-    try {
-      for (const file of Array.from(files)) {
-        await pageContextService.addAsset({
-          pageId: selectedNode.id,
-          filename: file.name,
-          mimeType: file.type,
-          size: file.size,
-        });
-      }
-      setPageContext(await pageContextService.loadPageContext(selectedNode.id));
-    } catch (uploadFailure) {
-      setUploadError(
-        uploadFailure instanceof Error ? uploadFailure.message : 'Material upload failed.',
-      );
     }
   }
 
@@ -410,6 +423,14 @@ export function WorkspaceShell({
     } finally {
       setIsPublishing(false);
     }
+  }
+
+  function handleOpenDraftPreview() {
+    if (!isPageCapableNode(selectedNode) || !pageContext?.draft || selectedVersion) {
+      return;
+    }
+
+    window.open(`/preview/${encodeURIComponent(selectedNode.id)}`, '_blank', 'noopener,noreferrer');
   }
 
   return (
@@ -490,6 +511,15 @@ export function WorkspaceShell({
             <h2 id="page-preview-title">Page preview</h2>
           </div>
           <div className="preview-actions">
+            <button
+              className="button secondary icon-label neutral"
+              type="button"
+              disabled={!isPageCapableNode(selectedNode) || !pageContext?.draft || Boolean(selectedVersion)}
+              onClick={handleOpenDraftPreview}
+            >
+              <ExternalLink size={16} />
+              Open draft preview
+            </button>
             <button
               className="button icon-label"
               type="button"
@@ -629,11 +659,6 @@ export function WorkspaceShell({
                   <p>Publish this page before embedding.</p>
                 )}
               </div>
-              {uploadError ? (
-                <div className="auth-error compact" role="alert">
-                  {uploadError}
-                </div>
-              ) : null}
               {pageContext?.assets.length ? (
                 <div className="asset-list" aria-label={`Uploaded materials for ${selectedNode.title}`}>
                   {pageContext.assets.map((asset) => (
@@ -653,42 +678,15 @@ export function WorkspaceShell({
             </>
           )}
         </div>
-        <fieldset className="link-composer" disabled={!isPageCapableNode(selectedNode)}>
-          <label htmlFor="reference-link">Reference link</label>
-          <div className="inline-form">
-            <input
-              id="reference-link"
-              placeholder="https://example.com/source"
-              type="url"
-              value={linkText}
-              onChange={(event) => setLinkText(event.target.value)}
-            />
-            <button
-              className="button secondary"
-              type="button"
-              disabled={!isPageCapableNode(selectedNode) || !linkText.trim()}
-              onClick={handleAddLink}
-            >
-              Add link
-            </button>
-          </div>
-          {linkError ? (
-            <div className="auth-error compact" role="alert">
-              {linkError}
-            </div>
-          ) : null}
-        </fieldset>
-        <fieldset className="upload-composer" disabled={!isPageCapableNode(selectedNode)}>
-          <label htmlFor="material-upload">Upload page materials</label>
-          <input
-            id="material-upload"
-            multiple
-            type="file"
-            onChange={(event) => handleUploadMaterials(event.target.files)}
-          />
-        </fieldset>
         <fieldset className="chat-composer" disabled={!isPageCapableNode(selectedNode)}>
           <div className="segmented-control" aria-label="Input type">
+            <button
+              aria-pressed={inputType === 'instruction'}
+              type="button"
+              onClick={() => setInputType('instruction')}
+            >
+              Instruction
+            </button>
             <button
               aria-pressed={inputType === 'idea'}
               type="button"
@@ -704,24 +702,50 @@ export function WorkspaceShell({
               Description
             </button>
           </div>
-          <label htmlFor="idea-input">Idea or content description</label>
+          <label htmlFor="idea-input">Message the page AI</label>
           <textarea
             id="idea-input"
             placeholder={
               isPageCapableNode(selectedNode)
-                ? 'Add page-specific context'
+                ? 'Send instructions, paste reference links, and attach materials'
                 : 'Select a tree item before adding inputs'
             }
             value={inputText}
             onChange={(event) => setInputText(event.target.value)}
           />
+          <label className="material-attachment" htmlFor="material-upload">
+            <Paperclip size={16} />
+            Attach materials
+            <input
+              id="material-upload"
+              multiple
+              ref={fileInputRef}
+              type="file"
+              onChange={(event) => handleSelectMaterials(event.target.files)}
+            />
+          </label>
+          {pendingFiles.length ? (
+            <div className="pending-materials" aria-label="Materials ready to send">
+              {pendingFiles.map((file) => (
+                <span key={`${file.name}-${file.size}`}>{file.name}</span>
+              ))}
+            </div>
+          ) : null}
+          {composerError ? (
+            <div className="auth-error compact" role="alert">
+              {composerError}
+            </div>
+          ) : null}
           <button
-            className="button secondary"
+            className="button secondary icon-label neutral"
             type="button"
-            disabled={!isPageCapableNode(selectedNode) || !inputText.trim()}
-            onClick={handleAddInput}
+            disabled={
+              !isPageCapableNode(selectedNode) || (!inputText.trim() && pendingFiles.length === 0)
+            }
+            onClick={handleSendInput}
           >
-            Add input
+            <Send size={16} />
+            Send
           </button>
         </fieldset>
       </section>

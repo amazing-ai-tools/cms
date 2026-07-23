@@ -67,6 +67,64 @@ describe('structured generation output', () => {
     });
   });
 
+  test('local generation folds instructions, links, and materials into the draft context', async () => {
+    const pageContextService = createLocalPageContextService({
+      storageKey: 'structured-generation-reference-context',
+    });
+    await pageContextService.addInput({
+      pageId: 'page-1',
+      type: 'instruction',
+      content: 'Make this page useful for agency owners.',
+    });
+    await pageContextService.addInput({
+      pageId: 'page-1',
+      type: 'link',
+      content: 'https://example.com/source',
+    });
+    await pageContextService.addAsset({
+      pageId: 'page-1',
+      filename: 'brief.pdf',
+      mimeType: 'application/pdf',
+      size: 2048,
+    });
+
+    const pageContext = await pageContextService.loadPageContext('page-1');
+    const generationService = createLocalGenerationService({
+      now: () => new Date('2026-07-23T10:00:00.000Z'),
+    });
+
+    const result = await generationService.generateDraft({
+      hierarchyPath: ['Agency', 'Launch'],
+      pageContext,
+      pageId: 'page-1',
+      pageTitle: 'Launch',
+    });
+
+    expect(result.job.steps).toEqual(
+      expect.arrayContaining([
+        'Reviewing instructions',
+        'Reviewing reference links',
+        'Reviewing uploaded materials',
+      ]),
+    );
+    expect(result.draft?.blocks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'text',
+          content: expect.stringContaining('agency owners'),
+        }),
+        expect.objectContaining({
+          type: 'text',
+          content: expect.stringContaining('https://example.com/source'),
+        }),
+        expect.objectContaining({
+          type: 'media',
+          content: 'brief.pdf',
+        }),
+      ]),
+    );
+  });
+
   test('page context service rejects invalid generated draft shapes before saving', async () => {
     const pageContextService = createLocalPageContextService({
       storageKey: 'structured-generation-invalid-context',
