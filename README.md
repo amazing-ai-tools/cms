@@ -14,6 +14,8 @@ Required repository variables:
 - `APP_DOMAIN`
 - `BUGZERO_APP_KEY`
 - `BUGZERO_WIDGET_URL`
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CALLBACK_URL`
 - `RUNNER_LABEL`
 
 Required repository secret:

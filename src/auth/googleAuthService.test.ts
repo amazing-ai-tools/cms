@@ -77,4 +77,28 @@ describe('Google auth service', () => {
 
     await expect(authService.signInWithGoogle()).rejects.toThrow(/google client id is not configured/i);
   });
+
+  test('does not restore the legacy demo Google session', async () => {
+    window.localStorage.setItem(
+      'google-auth-service-legacy-demo',
+      JSON.stringify({
+        user: {
+          id: 'google-demo-user',
+          email: 'taylor.morgan@example.com',
+          name: 'Taylor Morgan',
+          avatarUrl: '',
+          provider: 'google',
+        },
+        authenticatedAt: new Date().toISOString(),
+      }),
+    );
+
+    const authService = createGoogleAuthService({
+      clientId: 'google-client-id.apps.googleusercontent.com',
+      storageKey: 'google-auth-service-legacy-demo',
+    });
+
+    await expect(authService.refreshSession()).resolves.toBeNull();
+    expect(window.localStorage.getItem('google-auth-service-legacy-demo')).toBeNull();
+  });
 });

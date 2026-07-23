@@ -15,6 +15,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Validate production runtime configuration
+        env:
+          GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
+          GOOGLE_CALLBACK_URL: ${{ vars.GOOGLE_CALLBACK_URL }}
+        run: |
+          missing=0
+          for name in GOOGLE_CLIENT_ID GOOGLE_CALLBACK_URL; do
+            if [ -z "${!name}" ]; then
+              echo "::error::$name is required for production Google sign-in"
+              missing=1
+            fi
+          done
+          exit "$missing"
+
       - name: Validate Azure CDN origin configuration
         if: ${{ vars.AZURE_CDN_STORAGE_ACCOUNT != '' }}
         env:

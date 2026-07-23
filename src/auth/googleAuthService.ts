@@ -51,6 +51,10 @@ function createSession(user: AuthUser): AuthSession {
   };
 }
 
+function isLegacyDemoSession(session: AuthSession): boolean {
+  return session.user.id === 'google-demo-user' || session.user.email === 'taylor.morgan@example.com';
+}
+
 function readSession(storageKey: string): AuthSession | null {
   const rawSession = window.localStorage.getItem(storageKey);
   if (!rawSession) {
@@ -58,7 +62,13 @@ function readSession(storageKey: string): AuthSession | null {
   }
 
   try {
-    return JSON.parse(rawSession) as AuthSession;
+    const session = JSON.parse(rawSession) as AuthSession;
+    if (isLegacyDemoSession(session)) {
+      window.localStorage.removeItem(storageKey);
+      return null;
+    }
+
+    return session;
   } catch {
     window.localStorage.removeItem(storageKey);
     return null;
