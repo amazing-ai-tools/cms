@@ -118,7 +118,7 @@ Technical Notes:
 
 ## Epic 2: Hierarchical Content Structure
 
-### Story 2.1: Content Hierarchy Data Model
+### [DONE] Story 2.1: Content Hierarchy Data Model
 
 As a content manager, I want categories, subcategories, and pages to share a consistent hierarchy so I can organize content across multiple sites.
 
