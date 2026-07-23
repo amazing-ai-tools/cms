@@ -57,6 +57,19 @@ body {
   background: #fffdf8;
 }
 
+.workspace-status {
+  margin-top: 18px;
+  padding: 22px 24px;
+  border: 1px solid #d9ded6;
+  border-radius: 8px;
+  background: #fffdf8;
+}
+
+.workspace-status h2 {
+  margin: 8px 0 8px;
+  font-size: 1.35rem;
+}
+
 .eyebrow {
   display: inline-flex;
   align-items: center;

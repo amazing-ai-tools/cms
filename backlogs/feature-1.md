@@ -82,7 +82,7 @@ Technical Notes:
 - Persist only the session/user data needed by the CMS.
 - Add tests for signed-out redirect/gate behavior and signed-in workspace access.
 
-### Story 1.2: Authenticated Workspace Creation And Access
+### [DONE] Story 1.2: Authenticated Workspace Creation And Access
 
 As a content manager, I want my workspace to be created or loaded after login so my content belongs to my Google account.
 

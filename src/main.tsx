@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { App } from './App';
 import { createLocalAuthService } from './auth/localAuthService';
+import { createLocalWorkspaceService } from './workspace/localWorkspaceService';
 import './styles.css';
 
 const bugzeroAppKey = import.meta.env.VITE_BUGZERO_APP_KEY || '';
@@ -28,9 +29,12 @@ ensureBugZeroWidget();
 const authService = createLocalAuthService({
   storageKey: `assisted-cms.google-session.${googleClientId || googleCallbackUrl}`,
 });
+const workspaceService = createLocalWorkspaceService({
+  storageKey: `assisted-cms.workspaces.${googleClientId || googleCallbackUrl}`,
+});
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <App authService={authService} />
+    <App authService={authService} workspaceService={workspaceService} />
   </React.StrictMode>,
 );

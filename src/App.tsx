@@ -1,9 +1,12 @@
 import React from 'react';
 import { AlertCircle, LogOut, ShieldCheck } from 'lucide-react';
 import type { AuthService, AuthSession } from './auth/types';
+import { createLocalWorkspaceService } from './workspace/localWorkspaceService';
+import type { Workspace, WorkspaceService } from './workspace/types';
 
 interface AppProps {
   authService: AuthService;
+  workspaceService?: WorkspaceService;
 }
 
 type AuthViewState =
@@ -11,10 +14,24 @@ type AuthViewState =
   | { status: 'signed-out'; session: null; error: string }
   | { status: 'signed-in'; session: AuthSession; error: '' };
 
-export function App({ authService }: AppProps) {
+type WorkspaceViewState =
+  | { status: 'idle'; workspace: null; error: '' }
+  | { status: 'loading'; workspace: null; error: '' }
+  | { status: 'creating'; workspace: null; error: '' }
+  | { status: 'ready'; workspace: Workspace; error: '' }
+  | { status: 'error'; workspace: null; error: string };
+
+const defaultWorkspaceService = createLocalWorkspaceService();
+
+export function App({ authService, workspaceService = defaultWorkspaceService }: AppProps) {
   const [authState, setAuthState] = React.useState<AuthViewState>({
     status: 'loading',
     session: null,
+    error: '',
+  });
+  const [workspaceState, setWorkspaceState] = React.useState<WorkspaceViewState>({
+    status: 'idle',
+    workspace: null,
     error: '',
   });
 
@@ -49,6 +66,50 @@ export function App({ authService }: AppProps) {
     };
   }, [authService]);
 
+  React.useEffect(() => {
+    if (authState.status !== 'signed-in') {
+      setWorkspaceState({ status: 'idle', workspace: null, error: '' });
+      return;
+    }
+
+    let isMounted = true;
+    const user = authState.session.user;
+
+    workspaceService
+      .getWorkspaceForUser(user.id)
+      .then((existingWorkspace) => {
+        if (!isMounted) {
+          return;
+        }
+
+        setWorkspaceState({
+          status: existingWorkspace ? 'loading' : 'creating',
+          workspace: null,
+          error: '',
+        });
+
+        return workspaceService.loadOrCreateWorkspace(user);
+      })
+      .then((result) => {
+        if (isMounted && result) {
+          setWorkspaceState({ status: 'ready', workspace: result.workspace, error: '' });
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setWorkspaceState({
+            status: 'error',
+            workspace: null,
+            error: 'Workspace could not be loaded for this Google account.',
+          });
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [authState, workspaceService]);
+
   async function handleGoogleSignIn() {
     setAuthState({ status: 'loading', session: null, error: '' });
 
@@ -67,6 +128,7 @@ export function App({ authService }: AppProps) {
   async function handleSignOut() {
     await authService.signOut();
     setAuthState({ status: 'signed-out', session: null, error: '' });
+    setWorkspaceState({ status: 'idle', workspace: null, error: '' });
   }
 
   if (authState.status === 'loading') {
@@ -119,6 +181,23 @@ export function App({ authService }: AppProps) {
           </button>
         </div>
       </header>
+      <section className="workspace-status" aria-live="polite">
+        {workspaceState.status === 'creating' ? <p>Creating workspace...</p> : null}
+        {workspaceState.status === 'loading' ? <p>Loading workspace...</p> : null}
+        {workspaceState.status === 'ready' ? (
+          <div>
+            <span className="eyebrow">Workspace</span>
+            <h2>{workspaceState.workspace.name}</h2>
+            <p>Owned by {authState.session.user.email}</p>
+          </div>
+        ) : null}
+        {workspaceState.status === 'error' ? (
+          <div className="auth-error" role="alert">
+            <AlertCircle size={18} />
+            <span>{workspaceState.error}</span>
+          </div>
+        ) : null}
+      </section>
     </main>
   );
 }
