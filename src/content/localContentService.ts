@@ -33,11 +33,11 @@ function findNode(storage: ContentStorage, nodeId: string) {
 
 function isValidParentType(nodeType: ContentNodeType, parentType: ContentNodeType | null) {
   if (nodeType === 'category') {
-    return parentType === null;
+    return parentType === null || parentType === 'category' || parentType === 'subcategory';
   }
 
   if (nodeType === 'subcategory') {
-    return parentType === 'category';
+    return parentType === 'category' || parentType === 'subcategory';
   }
 
   return parentType === 'category' || parentType === 'subcategory' || parentType === 'page';
@@ -45,11 +45,11 @@ function isValidParentType(nodeType: ContentNodeType, parentType: ContentNodeTyp
 
 function validationMessageFor(nodeType: ContentNodeType) {
   if (nodeType === 'category') {
-    return 'Categories must be created at the workspace root.';
+    return 'Categories must be created at the workspace root or inside another category.';
   }
 
   if (nodeType === 'subcategory') {
-    return 'Subcategories must be created under a category.';
+    return 'Subcategories must be created under a category or subcategory.';
   }
 
   return 'Pages must be created inside a category, subcategory, or page.';

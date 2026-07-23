@@ -70,14 +70,16 @@ describe('page selection and context loading', () => {
     expect(within(inputsPanel).getByText(/active version: none/i)).toBeInTheDocument();
   });
 
-  test('selecting a category shows a non-page state and page creation options', async () => {
+  test('selecting a category loads page context and category creation options', async () => {
     await renderWorkspaceWithContent('category-context');
 
     await userEvent.click(screen.getByRole('button', { name: /category 1 category/i }));
 
-    expect(await screen.findByText(/selected node: category 1/i)).toBeInTheDocument();
+    expect(await screen.findByText(/selected page: category 1/i)).toBeInTheDocument();
+    expect(screen.getByText(/inputs for category 1/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /generate/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /create child category/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^create page$/i })).toBeInTheDocument();
-    expect(screen.getByText(/select a page to collect inputs/i)).toBeInTheDocument();
   });
 
   test('selected page survives a reload', async () => {

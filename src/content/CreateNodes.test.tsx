@@ -16,7 +16,7 @@ const user: AuthUser = {
 };
 
 describe('content node creation controls', () => {
-  test('creates categories, subcategories, pages, and nested pages from the shell', async () => {
+  test('creates categories, pages, and nested pages from the shell', async () => {
     const authService = createLocalAuthService({
       initialUser: user,
       storageKey: 'create-nodes-auth',
@@ -39,23 +39,58 @@ describe('content node creation controls', () => {
     expect(await screen.findByText(/no categories yet/i)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^create page$/i })).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole('button', { name: /create category/i }));
+    await userEvent.click(screen.getByRole('button', { name: /create root category/i }));
     expect(await screen.findByRole('button', { name: /category 1 category/i })).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole('button', { name: /create subcategory/i }));
-    expect(await screen.findByRole('button', { name: /subcategory 1 subcategory/i })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /create child category/i }));
+    expect(await screen.findByRole('button', { name: /category 2 category/i })).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: /category 1 category/i }));
     await userEvent.click(screen.getByRole('button', { name: /^create page$/i }));
     expect(await screen.findByRole('button', { name: /page 1 page/i })).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole('button', { name: /subcategory 1 subcategory/i }));
+    await userEvent.click(screen.getByRole('button', { name: /category 2 category/i }));
     await userEvent.click(screen.getByRole('button', { name: /^create page$/i }));
     expect(await screen.findByRole('button', { name: /page 2 page/i })).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: /page 1 page/i }));
     await userEvent.click(screen.getByRole('button', { name: /create child page/i }));
     expect(await screen.findByRole('button', { name: /child page 1 page/i })).toBeInTheDocument();
+  });
+
+  test('creates cascading categories and generates page content on any selected tree item', async () => {
+    const authService = createLocalAuthService({
+      initialUser: user,
+      storageKey: 'create-cascading-categories-auth',
+    });
+    const workspaceService = createLocalWorkspaceService({
+      storageKey: 'create-cascading-categories-workspace',
+    });
+    const contentService = createLocalContentService({
+      storageKey: 'create-cascading-categories-content',
+    });
+
+    render(
+      <App
+        authService={authService}
+        workspaceService={workspaceService}
+        contentService={contentService}
+      />,
+    );
+
+    await userEvent.click(await screen.findByRole('button', { name: /create root category/i }));
+    await userEvent.click(await screen.findByRole('button', { name: /category 1 category/i }));
+    await userEvent.click(screen.getByRole('button', { name: /create child category/i }));
+    await userEvent.click(await screen.findByRole('button', { name: /category 2 category/i }));
+    await userEvent.click(screen.getByRole('button', { name: /create child category/i }));
+
+    expect(await screen.findByRole('button', { name: /category 3 category/i })).toBeInTheDocument();
+    expect(screen.getByText(/inputs for category 3/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /generate/i })).toBeEnabled();
+
+    await userEvent.click(screen.getByRole('button', { name: /generate/i }));
+
+    expect(await screen.findByText(/generated category 3/i)).toBeInTheDocument();
   });
 
   test('created nodes remain after reload', async () => {
@@ -78,7 +113,7 @@ describe('content node creation controls', () => {
       />,
     );
 
-    await userEvent.click(await screen.findByRole('button', { name: /create category/i }));
+    await userEvent.click(await screen.findByRole('button', { name: /create root category/i }));
     expect(await screen.findByRole('button', { name: /category 1 category/i })).toBeInTheDocument();
 
     unmount();

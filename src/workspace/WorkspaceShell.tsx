@@ -48,6 +48,16 @@ function defaultTitleFor(type: ContentNodeType, nodes: ContentNode[], parent: Co
   return `Page ${nodes.filter((node) => node.type === 'page').length + 1}`;
 }
 
+function isPageCapableNode(node: ContentNode | null): node is ContentNode {
+  return Boolean(node);
+}
+
+function canCreateChildCategory(
+  node: ContentNode | null,
+): node is ContentNode & { type: 'category' | 'subcategory' } {
+  return node?.type === 'category' || node?.type === 'subcategory';
+}
+
 function childNodesFor(nodes: ContentNode[], parentId: string | null) {
   return nodes
     .filter((node) => node.parentId === parentId)
@@ -205,7 +215,7 @@ export function WorkspaceShell({
   }, [contentService, selectionStorageKey, workspace.id]);
 
   React.useEffect(() => {
-    if (selectedNode?.type !== 'page') {
+    if (!isPageCapableNode(selectedNode)) {
       setPageContext(null);
       return;
     }
@@ -251,7 +261,7 @@ export function WorkspaceShell({
   }
 
   async function handleAddInput() {
-    if (selectedNode?.type !== 'page' || !inputText.trim()) {
+    if (!isPageCapableNode(selectedNode) || !inputText.trim()) {
       return;
     }
 
@@ -265,7 +275,7 @@ export function WorkspaceShell({
   }
 
   async function handleGenerate() {
-    if (selectedNode?.type !== 'page') {
+    if (!isPageCapableNode(selectedNode)) {
       return;
     }
 
@@ -306,7 +316,7 @@ export function WorkspaceShell({
   }
 
   async function handleAddLink() {
-    if (selectedNode?.type !== 'page') {
+    if (!isPageCapableNode(selectedNode)) {
       return;
     }
 
@@ -326,7 +336,7 @@ export function WorkspaceShell({
   }
 
   async function handleUploadMaterials(files: FileList | null) {
-    if (selectedNode?.type !== 'page' || !files) {
+    if (!isPageCapableNode(selectedNode) || !files) {
       return;
     }
 
@@ -350,7 +360,7 @@ export function WorkspaceShell({
   }
 
   async function handleDraftChange(nextDraft: PageDraft) {
-    if (selectedNode?.type !== 'page') {
+    if (!isPageCapableNode(selectedNode)) {
       return;
     }
 
@@ -379,7 +389,7 @@ export function WorkspaceShell({
   }
 
   async function handlePublishDraft() {
-    if (selectedNode?.type !== 'page' || !pageContext?.draft) {
+    if (!isPageCapableNode(selectedNode) || !pageContext?.draft) {
       return;
     }
 
@@ -438,17 +448,17 @@ export function WorkspaceShell({
             onClick={() => handleCreate('category', null)}
           >
             <Plus size={16} />
-            Create category
+            Create root category
           </button>
-          {selectedNode?.type === 'category' ? (
+          {canCreateChildCategory(selectedNode) ? (
             <>
               <button
                 className="button secondary icon-label neutral"
                 type="button"
-                onClick={() => handleCreate('subcategory', selectedNode.id)}
+                onClick={() => handleCreate('category', selectedNode.id)}
               >
                 <Plus size={16} />
-                Create subcategory
+                Create child category
               </button>
               <button
                 className="button secondary icon-label neutral"
@@ -459,16 +469,6 @@ export function WorkspaceShell({
                 Create page
               </button>
             </>
-          ) : null}
-          {selectedNode?.type === 'subcategory' ? (
-            <button
-              className="button secondary icon-label neutral"
-              type="button"
-              onClick={() => handleCreate('page', selectedNode.id)}
-            >
-              <Plus size={16} />
-              Create page
-            </button>
           ) : null}
           {selectedNode?.type === 'page' ? (
             <button
@@ -493,7 +493,7 @@ export function WorkspaceShell({
             <button
               className="button icon-label"
               type="button"
-              disabled={selectedNode?.type !== 'page' || isGenerating}
+              disabled={!isPageCapableNode(selectedNode) || isGenerating}
               onClick={handleGenerate}
             >
               <Sparkles size={16} />
@@ -503,7 +503,7 @@ export function WorkspaceShell({
               className="button secondary icon-label neutral"
               type="button"
               disabled={
-                selectedNode?.type !== 'page' || !pageContext?.draft || Boolean(selectedVersion) || isPublishing
+                !isPageCapableNode(selectedNode) || !pageContext?.draft || Boolean(selectedVersion) || isPublishing
               }
               onClick={handlePublishDraft}
             >
@@ -535,7 +535,7 @@ export function WorkspaceShell({
             ) : null}
           </div>
         ) : null}
-        {selectedNode?.type === 'page' && pageContext?.versions.length ? (
+        {isPageCapableNode(selectedNode) && pageContext?.versions.length ? (
           <div className="version-navigator" aria-label="Published versions">
             <strong>Published versions</strong>
             <div className="version-list">
@@ -567,7 +567,7 @@ export function WorkspaceShell({
             </button>
           </div>
         ) : null}
-        {selectedNode?.type === 'page' && previewDraft ? (
+        {isPageCapableNode(selectedNode) && previewDraft ? (
           <>
             <PageDraftPreview assets={pageContext?.assets ?? []} draft={previewDraft} />
             {selectedVersion ? null : (
@@ -579,15 +579,13 @@ export function WorkspaceShell({
             <FileText size={26} />
             <strong>
               {selectedNode
-                ? `${selectedNode.type === 'page' ? 'Selected page' : 'Selected node'}: ${
-                    selectedNode.title
-                  }`
+                ? `Selected page: ${selectedNode.title}`
                 : 'No page selected'}
             </strong>
             <p>
-              {selectedNode?.type === 'page'
+              {isPageCapableNode(selectedNode)
                 ? 'Draft preview will load here as page content is generated.'
-                : 'Select a page to preview draft content and run generation.'}
+                : 'Select a tree item to preview draft content and run generation.'}
             </p>
           </div>
         )}
@@ -599,7 +597,7 @@ export function WorkspaceShell({
           <h2 id="page-inputs-title">Page inputs</h2>
         </div>
         <div className="chat-empty">
-          {selectedNode?.type === 'page' ? (
+          {isPageCapableNode(selectedNode) ? (
             <>
               <strong>Inputs for {selectedNode.title}</strong>
               {pageContext?.inputs.length ? (
@@ -655,7 +653,7 @@ export function WorkspaceShell({
             </>
           )}
         </div>
-        <fieldset className="link-composer" disabled={selectedNode?.type !== 'page'}>
+        <fieldset className="link-composer" disabled={!isPageCapableNode(selectedNode)}>
           <label htmlFor="reference-link">Reference link</label>
           <div className="inline-form">
             <input
@@ -668,7 +666,7 @@ export function WorkspaceShell({
             <button
               className="button secondary"
               type="button"
-              disabled={selectedNode?.type !== 'page' || !linkText.trim()}
+              disabled={!isPageCapableNode(selectedNode) || !linkText.trim()}
               onClick={handleAddLink}
             >
               Add link
@@ -680,7 +678,7 @@ export function WorkspaceShell({
             </div>
           ) : null}
         </fieldset>
-        <fieldset className="upload-composer" disabled={selectedNode?.type !== 'page'}>
+        <fieldset className="upload-composer" disabled={!isPageCapableNode(selectedNode)}>
           <label htmlFor="material-upload">Upload page materials</label>
           <input
             id="material-upload"
@@ -689,7 +687,7 @@ export function WorkspaceShell({
             onChange={(event) => handleUploadMaterials(event.target.files)}
           />
         </fieldset>
-        <fieldset className="chat-composer" disabled={selectedNode?.type !== 'page'}>
+        <fieldset className="chat-composer" disabled={!isPageCapableNode(selectedNode)}>
           <div className="segmented-control" aria-label="Input type">
             <button
               aria-pressed={inputType === 'idea'}
@@ -710,9 +708,9 @@ export function WorkspaceShell({
           <textarea
             id="idea-input"
             placeholder={
-              selectedNode?.type === 'page'
+              isPageCapableNode(selectedNode)
                 ? 'Add page-specific context'
-                : 'Select a page before adding inputs'
+                : 'Select a tree item before adding inputs'
             }
             value={inputText}
             onChange={(event) => setInputText(event.target.value)}
@@ -720,7 +718,7 @@ export function WorkspaceShell({
           <button
             className="button secondary"
             type="button"
-            disabled={selectedNode?.type !== 'page' || !inputText.trim()}
+            disabled={!isPageCapableNode(selectedNode) || !inputText.trim()}
             onClick={handleAddInput}
           >
             Add input

@@ -44,6 +44,41 @@ describe('content hierarchy data model', () => {
     ]);
   });
 
+  test('supports cascading categories that can also hold page context', async () => {
+    const contentService = createLocalContentService({ storageKey: 'hierarchy-cascading-categories' });
+    const category = await contentService.createNode({
+      workspaceId: 'workspace-1',
+      parentId: null,
+      type: 'category',
+      title: 'Brand sites',
+    });
+    const childCategory = await contentService.createNode({
+      workspaceId: 'workspace-1',
+      parentId: category.id,
+      type: 'category',
+      title: 'Campaigns',
+    });
+    const grandchildCategory = await contentService.createNode({
+      workspaceId: 'workspace-1',
+      parentId: childCategory.id,
+      type: 'category',
+      title: 'Launch pages',
+    });
+    const page = await contentService.createNode({
+      workspaceId: 'workspace-1',
+      parentId: grandchildCategory.id,
+      type: 'page',
+      title: 'Homepage hero',
+    });
+
+    expect(await contentService.listNodes('workspace-1')).toEqual([
+      category,
+      childCategory,
+      grandchildCategory,
+      page,
+    ]);
+  });
+
   test('rejects invalid parent-child relationships', async () => {
     const contentService = createLocalContentService({ storageKey: 'hierarchy-invalid' });
     const category = await contentService.createNode({
@@ -73,10 +108,13 @@ describe('content hierarchy data model', () => {
       contentService.createNode({
         workspaceId: 'workspace-1',
         parentId: category.id,
-        type: 'category',
-        title: 'Nested category',
+        type: 'subcategory',
+        title: 'Nested subcategory',
       }),
-    ).rejects.toThrow(/categories must be created at the workspace root/i);
+    ).resolves.toMatchObject({
+      parentId: category.id,
+      type: 'subcategory',
+    });
   });
 
   test('prevents moves that would create hierarchy cycles', async () => {
