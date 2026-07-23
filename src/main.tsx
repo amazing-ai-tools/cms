@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { App } from './App';
 import { createLocalAuthService } from './auth/localAuthService';
+import { createLocalContentService } from './content/localContentService';
 import { createLocalWorkspaceService } from './workspace/localWorkspaceService';
 import './styles.css';
 
@@ -32,9 +33,12 @@ const authService = createLocalAuthService({
 const workspaceService = createLocalWorkspaceService({
   storageKey: `assisted-cms.workspaces.${googleClientId || googleCallbackUrl}`,
 });
+const contentService = createLocalContentService({
+  storageKey: `assisted-cms.content.${googleClientId || googleCallbackUrl}`,
+});
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <App authService={authService} workspaceService={workspaceService} />
+    <App authService={authService} contentService={contentService} workspaceService={workspaceService} />
   </React.StrictMode>,
 );

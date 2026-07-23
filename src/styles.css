@@ -123,6 +123,11 @@ p {
   color: #fff;
 }
 
+.button.icon-label.neutral {
+  background: #f8faf6;
+  color: #1f2430;
+}
+
 .button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
@@ -138,6 +143,11 @@ p {
   border-radius: 8px;
   color: #8f2a17;
   background: #fff2ef;
+}
+
+.auth-error.compact {
+  margin-top: 14px;
+  font-size: 0.9rem;
 }
 
 .loading-text {
@@ -244,6 +254,60 @@ p {
 
 .empty-state .button {
   margin-top: 18px;
+}
+
+.hierarchy-actions {
+  display: grid;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.hierarchy-actions .button {
+  justify-content: flex-start;
+  width: 100%;
+}
+
+.content-tree {
+  display: grid;
+  gap: 6px;
+  margin: 20px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.content-tree.nested {
+  margin-top: 6px;
+  padding-left: 14px;
+  border-left: 1px solid #d9ded6;
+}
+
+.tree-node-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 7px 10px;
+  background: transparent;
+  color: #1f2430;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tree-node-button[aria-current="true"] {
+  border-color: #8ba88b;
+  background: #eef4ec;
+}
+
+.tree-node-button small {
+  color: #6a735f;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
 }
 
 .preview-empty {

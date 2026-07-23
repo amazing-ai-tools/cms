@@ -1,12 +1,15 @@
 import React from 'react';
 import { AlertCircle, LogOut, ShieldCheck } from 'lucide-react';
 import type { AuthService, AuthSession } from './auth/types';
+import { createLocalContentService } from './content/localContentService';
+import type { ContentService } from './content/types';
 import { createLocalWorkspaceService } from './workspace/localWorkspaceService';
 import { WorkspaceShell } from './workspace/WorkspaceShell';
 import type { Workspace, WorkspaceService } from './workspace/types';
 
 interface AppProps {
   authService: AuthService;
+  contentService?: ContentService;
   workspaceService?: WorkspaceService;
 }
 
@@ -23,8 +26,13 @@ type WorkspaceViewState =
   | { status: 'error'; workspace: null; error: string };
 
 const defaultWorkspaceService = createLocalWorkspaceService();
+const defaultContentService = createLocalContentService();
 
-export function App({ authService, workspaceService = defaultWorkspaceService }: AppProps) {
+export function App({
+  authService,
+  contentService = defaultContentService,
+  workspaceService = defaultWorkspaceService,
+}: AppProps) {
   const [authState, setAuthState] = React.useState<AuthViewState>({
     status: 'loading',
     session: null,
@@ -198,7 +206,9 @@ export function App({ authService, workspaceService = defaultWorkspaceService }:
           </div>
         ) : null}
       </section>
-      {workspaceState.status === 'ready' ? <WorkspaceShell workspace={workspaceState.workspace} /> : null}
+      {workspaceState.status === 'ready' ? (
+        <WorkspaceShell contentService={contentService} workspace={workspaceState.workspace} />
+      ) : null}
     </main>
   );
 }

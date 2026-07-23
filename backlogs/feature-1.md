@@ -136,7 +136,7 @@ Technical Notes:
 - Keep ordering fields available for future manual ordering.
 - Enforce hierarchy validation in the API or persistence layer.
 
-### Story 2.2: Create Categories, Subcategories, And Pages
+### [DONE] Story 2.2: Create Categories, Subcategories, And Pages
 
 As a content manager, I want to create content nodes in the selected hierarchy location so the structure matches my external sites.
 

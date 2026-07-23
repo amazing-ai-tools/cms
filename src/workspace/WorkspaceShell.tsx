@@ -1,11 +1,121 @@
-import { FileText, FolderTree, MessageSquareText, Sparkles } from 'lucide-react';
+import React from 'react';
+import { FileText, FolderTree, MessageSquareText, Plus, Sparkles } from 'lucide-react';
+import type { ContentNode, ContentNodeType, ContentService } from '../content/types';
 import type { Workspace } from './types';
 
 interface WorkspaceShellProps {
+  contentService: ContentService;
   workspace: Workspace;
 }
 
-export function WorkspaceShell({ workspace }: WorkspaceShellProps) {
+function defaultTitleFor(type: ContentNodeType, nodes: ContentNode[], parent: ContentNode | null) {
+  if (type === 'category') {
+    return `Category ${nodes.filter((node) => node.type === 'category').length + 1}`;
+  }
+
+  if (type === 'subcategory') {
+    return `Subcategory ${nodes.filter((node) => node.type === 'subcategory').length + 1}`;
+  }
+
+  if (parent?.type === 'page') {
+    return `Child page ${
+      nodes.filter((node) => node.type === 'page' && node.parentId === parent.id).length + 1
+    }`;
+  }
+
+  return `Page ${nodes.filter((node) => node.type === 'page').length + 1}`;
+}
+
+function childNodesFor(nodes: ContentNode[], parentId: string | null) {
+  return nodes
+    .filter((node) => node.parentId === parentId)
+    .sort((first, second) => first.sortOrder - second.sortOrder);
+}
+
+function TreeNodes({
+  nodes,
+  parentId,
+  selectedNodeId,
+  onSelect,
+}: {
+  nodes: ContentNode[];
+  parentId: string | null;
+  selectedNodeId: string | null;
+  onSelect: (nodeId: string) => void;
+}) {
+  const children = childNodesFor(nodes, parentId);
+  if (children.length === 0) {
+    return null;
+  }
+
+  return (
+    <ul className={parentId ? 'content-tree nested' : 'content-tree'}>
+      {children.map((node) => (
+        <li key={node.id}>
+          <button
+            aria-label={`${node.title} ${node.type}`}
+            aria-current={selectedNodeId === node.id ? 'true' : undefined}
+            className="tree-node-button"
+            type="button"
+            onClick={() => onSelect(node.id)}
+          >
+            <span>{node.title}</span>
+            <small>{node.type}</small>
+          </button>
+          <TreeNodes
+            nodes={nodes}
+            parentId={node.id}
+            selectedNodeId={selectedNodeId}
+            onSelect={onSelect}
+          />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+export function WorkspaceShell({ contentService, workspace }: WorkspaceShellProps) {
+  const [nodes, setNodes] = React.useState<ContentNode[]>([]);
+  const [selectedNodeId, setSelectedNodeId] = React.useState<string | null>(null);
+  const [error, setError] = React.useState('');
+  const selectedNode = nodes.find((node) => node.id === selectedNodeId) ?? null;
+
+  React.useEffect(() => {
+    let isMounted = true;
+
+    contentService.listNodes(workspace.id).then((loadedNodes) => {
+      if (isMounted) {
+        setNodes(loadedNodes);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [contentService, workspace.id]);
+
+  async function handleCreate(type: ContentNodeType, parentId: string | null) {
+    const parent = parentId ? nodes.find((node) => node.id === parentId) ?? null : null;
+
+    try {
+      setError('');
+      const node = await contentService.createNode({
+        workspaceId: workspace.id,
+        parentId,
+        type,
+        title: defaultTitleFor(type, nodes, parent),
+      });
+      setNodes(await contentService.listNodes(workspace.id));
+      setSelectedNodeId(node.id);
+    } catch (creationError) {
+      setError(
+        creationError instanceof Error
+          ? creationError.message
+          : 'Content node could not be created.',
+      );
+    }
+  }
+
   return (
     <div className="cms-grid" data-workspace-id={workspace.id}>
       <section
@@ -17,12 +127,69 @@ export function WorkspaceShell({ workspace }: WorkspaceShellProps) {
           <FolderTree size={18} />
           <h2 id="content-hierarchy-title">Content hierarchy</h2>
         </div>
-        <div className="empty-state">
-          <strong>No categories yet</strong>
-          <p>Create a category to start organizing pages.</p>
-          <button className="button secondary" type="button">
+        {error ? (
+          <div className="auth-error compact" role="alert">
+            {error}
+          </div>
+        ) : null}
+        {nodes.length === 0 ? (
+          <div className="empty-state">
+            <strong>No categories yet</strong>
+            <p>Create a category to start organizing pages.</p>
+          </div>
+        ) : (
+          <TreeNodes
+            nodes={nodes}
+            parentId={null}
+            selectedNodeId={selectedNodeId}
+            onSelect={setSelectedNodeId}
+          />
+        )}
+        <div className="hierarchy-actions" aria-label="Hierarchy creation actions">
+          <button className="button secondary icon-label neutral" type="button" onClick={() => handleCreate('category', null)}>
+            <Plus size={16} />
             Create category
           </button>
+          {selectedNode?.type === 'category' ? (
+            <>
+              <button
+                className="button secondary icon-label neutral"
+                type="button"
+                onClick={() => handleCreate('subcategory', selectedNode.id)}
+              >
+                <Plus size={16} />
+                Create subcategory
+              </button>
+              <button
+                className="button secondary icon-label neutral"
+                type="button"
+                onClick={() => handleCreate('page', selectedNode.id)}
+              >
+                <Plus size={16} />
+                Create page
+              </button>
+            </>
+          ) : null}
+          {selectedNode?.type === 'subcategory' ? (
+            <button
+              className="button secondary icon-label neutral"
+              type="button"
+              onClick={() => handleCreate('page', selectedNode.id)}
+            >
+              <Plus size={16} />
+              Create page
+            </button>
+          ) : null}
+          {selectedNode?.type === 'page' ? (
+            <button
+              className="button secondary icon-label neutral"
+              type="button"
+              onClick={() => handleCreate('page', selectedNode.id)}
+            >
+              <Plus size={16} />
+              Create child page
+            </button>
+          ) : null}
         </div>
       </section>
 
@@ -39,8 +206,18 @@ export function WorkspaceShell({ workspace }: WorkspaceShellProps) {
         </div>
         <div className="preview-empty">
           <FileText size={26} />
-          <strong>No page selected</strong>
-          <p>Select a page to preview draft content and run generation.</p>
+          <strong>
+            {selectedNode
+              ? `${selectedNode.type === 'page' ? 'Selected page' : 'Selected node'}: ${
+                  selectedNode.title
+                }`
+              : 'No page selected'}
+          </strong>
+          <p>
+            {selectedNode?.type === 'page'
+              ? 'Draft preview will load here as page content is generated.'
+              : 'Select a page to preview draft content and run generation.'}
+          </p>
         </div>
       </section>
 
