@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { App } from './App';
-import { createLocalAuthService } from './auth/localAuthService';
+import { createGoogleAuthService } from './auth/googleAuthService';
 import { createLocalContentService } from './content/localContentService';
 import { createLocalPageContextService } from './page/localPageContextService';
 import { createLocalWorkspaceService } from './workspace/localWorkspaceService';
@@ -28,7 +28,8 @@ function ensureBugZeroWidget() {
 
 ensureBugZeroWidget();
 
-const authService = createLocalAuthService({
+const authService = createGoogleAuthService({
+  clientId: googleClientId,
   storageKey: `assisted-cms.google-session.${googleClientId || googleCallbackUrl}`,
 });
 const workspaceService = createLocalWorkspaceService({
