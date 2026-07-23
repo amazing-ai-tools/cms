@@ -1,12 +1,14 @@
 import React from 'react';
-import { FileText, FolderTree, MessageSquareText, Plus, Sparkles } from 'lucide-react';
+import { AlertCircle, FileText, FolderTree, MessageSquareText, Plus, Sparkles } from 'lucide-react';
 import type { ContentNode, ContentNodeType, ContentService } from '../content/types';
+import type { GenerationJob, GenerationService } from '../generation/types';
 import type { PageContext, PageContextService, PageInputType } from '../page/types';
 import { normalizeUrl } from '../page/url';
 import type { Workspace } from './types';
 
 interface WorkspaceShellProps {
   contentService: ContentService;
+  generationService: GenerationService;
   pageContextService: PageContextService;
   workspace: Workspace;
 }
@@ -77,8 +79,35 @@ function TreeNodes({
   );
 }
 
+function hierarchyPathFor(nodes: ContentNode[], node: ContentNode) {
+  const path: string[] = [];
+  let currentNode: ContentNode | undefined = node;
+
+  while (currentNode) {
+    path.unshift(currentNode.title);
+    currentNode = currentNode.parentId
+      ? nodes.find((candidate) => candidate.id === currentNode?.parentId)
+      : undefined;
+  }
+
+  return path;
+}
+
+function generationStatusLabel(job: GenerationJob) {
+  if (job.status === 'failed') {
+    return 'Generation failed';
+  }
+
+  if (job.status === 'succeeded') {
+    return 'Generation succeeded';
+  }
+
+  return 'Generation running';
+}
+
 export function WorkspaceShell({
   contentService,
+  generationService,
   pageContextService,
   workspace,
 }: WorkspaceShellProps) {
@@ -90,12 +119,15 @@ export function WorkspaceShell({
   const [linkText, setLinkText] = React.useState('');
   const [linkError, setLinkError] = React.useState('');
   const [uploadError, setUploadError] = React.useState('');
+  const [generationJob, setGenerationJob] = React.useState<GenerationJob | null>(null);
   const [error, setError] = React.useState('');
   const selectedNode = nodes.find((node) => node.id === selectedNodeId) ?? null;
+  const isGenerating = generationJob?.status === 'queued' || generationJob?.status === 'running';
   const selectionStorageKey = `assisted-cms.selected-node.${workspace.id}`;
 
   function handleSelectNode(nodeId: string) {
     setSelectedNodeId(nodeId);
+    setGenerationJob(null);
     window.localStorage.setItem(selectionStorageKey, nodeId);
   }
 
@@ -169,6 +201,46 @@ export function WorkspaceShell({
     });
     setPageContext(await pageContextService.loadPageContext(selectedNode.id));
     setInputText('');
+  }
+
+  async function handleGenerate() {
+    if (selectedNode?.type !== 'page') {
+      return;
+    }
+
+    const runningJob: GenerationJob = {
+      id: `pending-${selectedNode.id}`,
+      pageId: selectedNode.id,
+      status: 'running',
+      steps: ['Collecting page inputs', 'Preparing draft request'],
+    };
+    setGenerationJob(runningJob);
+
+    try {
+      const selectedPageContext =
+        pageContext ?? (await pageContextService.loadPageContext(selectedNode.id));
+      const result = await generationService.generateDraft({
+        hierarchyPath: hierarchyPathFor(nodes, selectedNode),
+        pageContext: selectedPageContext,
+        pageId: selectedNode.id,
+        pageTitle: selectedNode.title,
+      });
+
+      if (result.job.status === 'succeeded' && result.draft) {
+        await pageContextService.saveDraft(result.draft);
+        setPageContext(await pageContextService.loadPageContext(selectedNode.id));
+      }
+
+      setGenerationJob(result.job);
+    } catch (generationError) {
+      setGenerationJob({
+        ...runningJob,
+        error:
+          generationError instanceof Error ? generationError.message : 'Generation failed to complete.',
+        status: 'failed',
+        steps: [...runningJob.steps, 'Generation failed'],
+      });
+    }
   }
 
   async function handleAddLink() {
@@ -302,11 +374,34 @@ export function WorkspaceShell({
             <span className="eyebrow">Selected page</span>
             <h2 id="page-preview-title">Page preview</h2>
           </div>
-          <button className="button icon-label" type="button" disabled>
+          <button
+            className="button icon-label"
+            type="button"
+            disabled={selectedNode?.type !== 'page' || isGenerating}
+            onClick={handleGenerate}
+          >
             <Sparkles size={16} />
-            Generate
+            {isGenerating ? 'Generating' : 'Generate'}
           </button>
         </div>
+        {generationJob ? (
+          <div className={`generation-status ${generationJob.status}`} aria-live="polite">
+            <strong>{generationStatusLabel(generationJob)}</strong>
+            {generationJob.status === 'failed' ? (
+              <div className="auth-error compact" role="alert">
+                <AlertCircle size={16} />
+                <span>{generationJob.error ?? 'Generation failed.'}</span>
+              </div>
+            ) : null}
+            {generationJob.steps.length ? (
+              <ol>
+                {generationJob.steps.map((step) => (
+                  <li key={step}>{step}</li>
+                ))}
+              </ol>
+            ) : null}
+          </div>
+        ) : null}
         <div className="preview-empty">
           <FileText size={26} />
           <strong>

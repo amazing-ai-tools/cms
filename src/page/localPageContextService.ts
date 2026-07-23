@@ -5,7 +5,9 @@ import type {
   PageAsset,
   PageContext,
   PageContextService,
+  PageDraft,
   PageInput,
+  SavePageDraftInput,
 } from './types';
 
 interface LocalPageContextServiceOptions {
@@ -14,28 +16,32 @@ interface LocalPageContextServiceOptions {
 
 interface PageContextStorage {
   assets: PageAsset[];
+  drafts: PageDraft[];
   inputs: PageInput[];
   nextAssetId: number;
+  nextDraftId: number;
   nextInputId: number;
 }
 
 function readStorage(storageKey: string): PageContextStorage {
   const rawStorage = window.localStorage.getItem(storageKey);
   if (!rawStorage) {
-    return { assets: [], inputs: [], nextAssetId: 1, nextInputId: 1 };
+    return { assets: [], drafts: [], inputs: [], nextAssetId: 1, nextDraftId: 1, nextInputId: 1 };
   }
 
   try {
     const parsed = JSON.parse(rawStorage) as Partial<PageContextStorage>;
     return {
       assets: parsed.assets ?? [],
+      drafts: parsed.drafts ?? [],
       inputs: parsed.inputs ?? [],
       nextAssetId: parsed.nextAssetId ?? 1,
+      nextDraftId: parsed.nextDraftId ?? 1,
       nextInputId: parsed.nextInputId ?? 1,
     };
   } catch {
     window.localStorage.removeItem(storageKey);
-    return { assets: [], inputs: [], nextAssetId: 1, nextInputId: 1 };
+    return { assets: [], drafts: [], inputs: [], nextAssetId: 1, nextDraftId: 1, nextInputId: 1 };
   }
 }
 
@@ -124,11 +130,36 @@ export function createLocalPageContextService(
       return {
         pageId,
         assets: storage.assets.filter((asset) => asset.pageId === pageId),
-        draft: null,
+        draft: storage.drafts.find((draft) => draft.pageId === pageId) ?? null,
         inputs: storage.inputs.filter((input) => input.pageId === pageId),
         versions: [],
         activePublication: null,
       };
+    },
+
+    async saveDraft(input: SavePageDraftInput): Promise<PageDraft> {
+      const storage = readStorage(storageKey);
+      const existingDraftIndex = storage.drafts.findIndex((draft) => draft.pageId === input.pageId);
+      const existingDraft =
+        existingDraftIndex >= 0 ? storage.drafts[existingDraftIndex] : undefined;
+      const now = new Date().toISOString();
+      const draft: PageDraft = {
+        id: input.id ?? existingDraft?.id ?? `draft-${storage.nextDraftId}`,
+        pageId: input.pageId,
+        title: input.title.trim(),
+        createdAt: input.createdAt ?? existingDraft?.createdAt ?? now,
+        updatedAt: input.updatedAt ?? now,
+      };
+
+      if (existingDraftIndex >= 0) {
+        storage.drafts[existingDraftIndex] = draft;
+      } else {
+        storage.drafts.push(draft);
+        storage.nextDraftId += 1;
+      }
+
+      writeStorage(storageKey, storage);
+      return draft;
     },
   };
 }

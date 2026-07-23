@@ -35,10 +35,26 @@ export interface AddPageAssetInput {
   size: number;
 }
 
+export interface PageDraft {
+  id: string;
+  pageId: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SavePageDraftInput {
+  id?: string;
+  pageId: string;
+  title: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface PageContext {
   pageId: string;
   assets: PageAsset[];
-  draft: null;
+  draft: PageDraft | null;
   inputs: PageInput[];
   versions: unknown[];
   activePublication: null;
@@ -48,4 +64,5 @@ export interface PageContextService {
   addAsset(input: AddPageAssetInput): Promise<PageAsset>;
   addInput(input: AddPageInputInput): Promise<PageInput>;
   loadPageContext(pageId: string): Promise<PageContext>;
+  saveDraft(input: SavePageDraftInput): Promise<PageDraft>;
 }

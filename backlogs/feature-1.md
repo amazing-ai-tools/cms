@@ -228,7 +228,7 @@ Technical Notes:
 
 ## Epic 4: AI-Assisted Generation And Draft Editing
 
-### Story 4.1: Generate Action And Generation Visibility
+### [DONE] Story 4.1: Generate Action And Generation Visibility
 
 As a content manager, I want to click Generate in the preview area and see what is being generated.
 

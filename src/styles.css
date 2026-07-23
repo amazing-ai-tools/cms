@@ -324,6 +324,43 @@ p {
   max-width: 340px;
 }
 
+.generation-status {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+  padding: 14px;
+  border: 1px solid #d9ded6;
+  border-radius: 8px;
+  background: #f8faf6;
+}
+
+.generation-status strong {
+  color: #1f2430;
+}
+
+.generation-status.succeeded {
+  border-color: #a8bea2;
+  background: #f0f6ef;
+}
+
+.generation-status.failed {
+  border-color: #e6b3a9;
+  background: #fff7f5;
+}
+
+.generation-status ol {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+  color: #394052;
+  font-size: 0.9rem;
+}
+
+.generation-status .auth-error {
+  margin-top: 0;
+}
+
 .chat-empty {
   margin-top: 28px;
 }
