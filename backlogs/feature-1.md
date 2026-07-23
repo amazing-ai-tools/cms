@@ -386,7 +386,7 @@ Technical Notes:
 - Keep CMS-only draft data out of public manifests.
 - Use stable paths that can support multiple pages and versions.
 
-### Story 6.2: CDN Delivery Integration
+### [DONE] Story 6.2: CDN Delivery Integration
 
 As a content manager, I want published content and assets to be available from a CDN so external sites can load them reliably.
 

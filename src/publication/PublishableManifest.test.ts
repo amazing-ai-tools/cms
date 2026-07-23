@@ -109,7 +109,7 @@ describe('publishable asset manifest', () => {
         }),
       ],
       pageId: 'page-1',
-      rendererScriptUrl: 'local://cdn/renderers/assisted-cms-embed.js',
+      rendererScriptUrl: 'https://cdn.local/assisted-cms/renderers/assisted-cms-embed.js',
       versionId: version.id,
       versionNumber: 1,
     });

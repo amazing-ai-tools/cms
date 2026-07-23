@@ -13,9 +13,12 @@ import type {
   SavePageDraftInput,
 } from './types';
 import { validatePageDraft } from './draftSchema';
+import type { CdnService } from '../publication/cdn';
+import { createLocalCdnService } from '../publication/localCdnService';
 import { buildPublishableManifest } from '../publication/manifest';
 
 interface LocalPageContextServiceOptions {
+  cdnService?: CdnService;
   failPublish?: boolean;
   storageKey?: string;
 }
@@ -117,6 +120,7 @@ export function createLocalPageContextService(
   options: LocalPageContextServiceOptions = {},
 ): PageContextService {
   const storageKey = options.storageKey ?? 'assisted-cms.page-context';
+  const cdnService = options.cdnService ?? createLocalCdnService();
   const failPublish = options.failPublish ?? false;
 
   return {
@@ -238,12 +242,26 @@ export function createLocalPageContextService(
         ...versionSnapshot,
         manifest: buildPublishableManifest(versionSnapshot),
       };
+      const cdnPublication = await cdnService.publishVersion(version);
+      const versionWithCdn: PublishedVersion = {
+        ...version,
+        assetManifest: version.assetManifest.map((asset, assetIndex) => ({
+          ...asset,
+          cdnUrl: cdnPublication.mediaUrls[assetIndex] ?? asset.cdnUrl,
+        })),
+        cdnUrls: {
+          content: cdnPublication.contentUrl,
+          media: cdnPublication.mediaUrls,
+          script: cdnPublication.scriptUrl,
+        },
+      };
+      versionWithCdn.manifest = buildPublishableManifest(versionWithCdn);
 
-      storage.versions.push(version);
+      storage.versions.push(versionWithCdn);
       storage.nextVersionId += 1;
       const publication: PagePublication = {
         pageId: input.pageId,
-        activeVersionId: version.id,
+        activeVersionId: versionWithCdn.id,
         lastPublishedAt: timestamp,
         status: 'published',
       };
@@ -262,7 +280,7 @@ export function createLocalPageContextService(
       };
       writeStorage(storageKey, storage);
 
-      return version;
+      return versionWithCdn;
     },
 
     async saveDraft(input: SavePageDraftInput): Promise<PageDraft> {
