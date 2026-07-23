@@ -421,7 +421,7 @@ Technical Notes:
 - The detailed embed API, security rules, domain rules, and SEO behavior remain out of scope beyond a working embed.
 - Add a sample local external host page or test fixture to verify the script.
 
-### Story 6.4: End-To-End Publish And Embed Verification
+### [DONE] Story 6.4: End-To-End Publish And Embed Verification
 
 As a content manager, I want confidence that a published page works outside the CMS.
 
