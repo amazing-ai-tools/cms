@@ -4,9 +4,11 @@ import type {
   MaterialFamily,
   PageAsset,
   PageContext,
+  PagePublication,
   PageContextService,
   PageDraft,
   PageInput,
+  PublishedVersion,
   SavePageDraftInput,
 } from './types';
 import { validatePageDraft } from './draftSchema';
@@ -22,27 +24,51 @@ interface PageContextStorage {
   nextAssetId: number;
   nextDraftId: number;
   nextInputId: number;
+  publications: PagePublication[];
+  versions: PublishedVersion[];
+}
+
+function emptyStorage(): PageContextStorage {
+  return {
+    assets: [],
+    drafts: [],
+    inputs: [],
+    nextAssetId: 1,
+    nextDraftId: 1,
+    nextInputId: 1,
+    publications: [],
+    versions: [],
+  };
+}
+
+function normalizeDraft(draft: PageDraft): PageDraft {
+  return {
+    ...draft,
+    isDirty: draft.isDirty ?? true,
+  };
 }
 
 function readStorage(storageKey: string): PageContextStorage {
   const rawStorage = window.localStorage.getItem(storageKey);
   if (!rawStorage) {
-    return { assets: [], drafts: [], inputs: [], nextAssetId: 1, nextDraftId: 1, nextInputId: 1 };
+    return emptyStorage();
   }
 
   try {
     const parsed = JSON.parse(rawStorage) as Partial<PageContextStorage>;
     return {
       assets: parsed.assets ?? [],
-      drafts: parsed.drafts ?? [],
+      drafts: (parsed.drafts ?? []).map(normalizeDraft),
       inputs: parsed.inputs ?? [],
       nextAssetId: parsed.nextAssetId ?? 1,
       nextDraftId: parsed.nextDraftId ?? 1,
       nextInputId: parsed.nextInputId ?? 1,
+      publications: parsed.publications ?? [],
+      versions: parsed.versions ?? [],
     };
   } catch {
     window.localStorage.removeItem(storageKey);
-    return { assets: [], drafts: [], inputs: [], nextAssetId: 1, nextDraftId: 1, nextInputId: 1 };
+    return emptyStorage();
   }
 }
 
@@ -133,8 +159,9 @@ export function createLocalPageContextService(
         assets: storage.assets.filter((asset) => asset.pageId === pageId),
         draft: storage.drafts.find((draft) => draft.pageId === pageId) ?? null,
         inputs: storage.inputs.filter((input) => input.pageId === pageId),
-        versions: [],
-        activePublication: null,
+        versions: storage.versions.filter((version) => version.pageId === pageId),
+        activePublication:
+          storage.publications.find((publication) => publication.pageId === pageId) ?? null,
       };
     },
 
@@ -150,6 +177,7 @@ export function createLocalPageContextService(
         id: input.id ?? existingDraft?.id ?? `draft-${storage.nextDraftId}`,
         pageId: input.pageId,
         title: input.title.trim(),
+        isDirty: input.isDirty ?? true,
         blocks: input.blocks,
         layout: input.layout,
         visual: input.visual,

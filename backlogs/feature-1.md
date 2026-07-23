@@ -298,7 +298,7 @@ Technical Notes:
 - Persist edits as draft changes only.
 - Avoid exposing raw JSON as the primary editing interface.
 
-### Story 4.5: Draft State And Dirty Tracking
+### [DONE] Story 4.5: Draft State And Dirty Tracking
 
 As a content manager, I want unpublished changes to stay in draft state so publishing remains an intentional action.
 

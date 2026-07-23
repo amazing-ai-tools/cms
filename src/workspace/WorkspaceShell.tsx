@@ -107,6 +107,14 @@ function generationStatusLabel(job: GenerationJob) {
   return 'Generation running';
 }
 
+function draftStateLabel(pageContext: PageContext | null) {
+  if (!pageContext?.draft) {
+    return 'not generated';
+  }
+
+  return pageContext.draft.isDirty ? 'unpublished changes' : 'up to date';
+}
+
 export function WorkspaceShell({
   contentService,
   generationService,
@@ -473,7 +481,7 @@ export function WorkspaceShell({
                 <p>No inputs have been added to this page.</p>
               )}
               <ul className="context-list">
-                <li>Draft: {pageContext?.draft ? 'generated' : 'not generated'}</li>
+                <li>Draft: {draftStateLabel(pageContext)}</li>
                 <li>Versions: {pageContext?.versions.length ?? 0}</li>
                 <li>Active version: {pageContext?.activePublication ? 'published' : 'none'}</li>
               </ul>

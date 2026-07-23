@@ -86,6 +86,7 @@ export interface PageDraft {
   id: string;
   pageId: string;
   title: string;
+  isDirty: boolean;
   blocks: PageDraftBlock[];
   layout: PageDraftLayout;
   visual: PageDraftVisual;
@@ -97,6 +98,7 @@ export interface SavePageDraftInput {
   id?: string;
   pageId: string;
   title: string;
+  isDirty?: boolean;
   blocks: PageDraftBlock[];
   layout: PageDraftLayout;
   visual: PageDraftVisual;
@@ -104,13 +106,47 @@ export interface SavePageDraftInput {
   updatedAt?: string;
 }
 
+export interface PublishedAssetReference {
+  assetId: string;
+  cdnUrl: string | null;
+  filename: string;
+  mimeType: string;
+  storageUrl: string;
+}
+
+export interface PublishedVersion {
+  id: string;
+  pageId: string;
+  versionNumber: number;
+  title: string;
+  contentSnapshot: PageDraftBlock[];
+  layoutSnapshot: PageDraftLayout;
+  visualSnapshot: PageDraftVisual;
+  assetManifest: PublishedAssetReference[];
+  cdnUrls: {
+    content: string;
+    media: string[];
+    script: string;
+  };
+  embedUrl: string;
+  createdAt: string;
+  createdBy: string;
+}
+
+export interface PagePublication {
+  pageId: string;
+  activeVersionId: string;
+  lastPublishedAt: string;
+  status: 'publishing' | 'published' | 'failed';
+}
+
 export interface PageContext {
   pageId: string;
   assets: PageAsset[];
   draft: PageDraft | null;
   inputs: PageInput[];
-  versions: unknown[];
-  activePublication: null;
+  versions: PublishedVersion[];
+  activePublication: PagePublication | null;
 }
 
 export interface PageContextService {

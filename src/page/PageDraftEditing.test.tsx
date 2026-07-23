@@ -22,6 +22,7 @@ function draftFor(pageId: string): PageDraft {
     id: 'draft-1',
     pageId,
     title: 'Initial launch page',
+    isDirty: true,
     blocks: [
       {
         id: 'block-hero',

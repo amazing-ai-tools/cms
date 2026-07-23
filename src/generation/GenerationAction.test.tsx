@@ -39,6 +39,7 @@ function structuredDraft(pageId: string, title: string): PageDraft {
     id: 'draft-1',
     pageId,
     title,
+    isDirty: true,
     blocks: [
       {
         id: 'block-hero',
@@ -172,7 +173,7 @@ describe('generate action and generation visibility', () => {
         'Generated launch page',
       );
     });
-    expect(await screen.findByText(/draft: generated/i)).toBeInTheDocument();
+    expect(await screen.findByText(/draft: unpublished changes/i)).toBeInTheDocument();
   });
 
   test('shows failed generation without replacing the existing draft', async () => {

@@ -7,6 +7,7 @@ const draft: PageDraft = {
   id: 'draft-1',
   pageId: 'page-1',
   title: 'Membership Launch',
+  isDirty: true,
   blocks: [
     {
       id: 'block-hero',

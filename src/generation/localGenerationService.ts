@@ -103,6 +103,7 @@ export function createLocalGenerationService(
           id: request.pageContext.draft?.id ?? `draft-${request.pageId}`,
           pageId: request.pageId,
           title: proposalTitleFor(request),
+          isDirty: true,
           blocks,
           layout: {
             canvas: {
