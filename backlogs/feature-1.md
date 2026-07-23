@@ -404,7 +404,7 @@ Technical Notes:
 - For local development, provide a static/public-file adapter that behaves like CDN output.
 - Avoid blocking the UI indefinitely while publication verifies delivery.
 
-### Story 6.3: External Embed Script
+### [DONE] Story 6.3: External Embed Script
 
 As a content manager, I want a script snippet for a published page so external sites can embed the active version.
 

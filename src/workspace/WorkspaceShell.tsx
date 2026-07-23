@@ -9,6 +9,7 @@ import {
   UploadCloud,
 } from 'lucide-react';
 import type { ContentNode, ContentNodeType, ContentService } from '../content/types';
+import { buildEmbedSnippet } from '../embed/embedScript';
 import type { GenerationJob, GenerationService } from '../generation/types';
 import { PageDraftEditor } from '../page/PageDraftEditor';
 import { PageDraftPreview } from '../page/PageDraftPreview';
@@ -165,6 +166,12 @@ export function WorkspaceShell({
   const selectedNode = nodes.find((node) => node.id === selectedNodeId) ?? null;
   const selectedVersion =
     pageContext?.versions.find((version) => version.id === selectedVersionId) ?? null;
+  const activeVersion =
+    pageContext?.activePublication?.status === 'published'
+      ? pageContext.versions.find(
+          (version) => version.id === pageContext.activePublication?.activeVersionId,
+        ) ?? null
+      : null;
   const previewDraft = selectedVersion
     ? draftForVersion(selectedVersion)
     : pageContext?.draft ?? null;
@@ -612,6 +619,18 @@ export function WorkspaceShell({
                 <li>Versions: {pageContext?.versions.length ?? 0}</li>
                 <li>Active version: {pageContext?.activePublication ? 'published' : 'none'}</li>
               </ul>
+              <div className="embed-snippet-panel">
+                <strong>Embed</strong>
+                {activeVersion ? (
+                  <textarea
+                    aria-label="Embed script"
+                    readOnly
+                    value={buildEmbedSnippet(activeVersion)}
+                  />
+                ) : (
+                  <p>Publish this page before embedding.</p>
+                )}
+              </div>
               {uploadError ? (
                 <div className="auth-error compact" role="alert">
                   {uploadError}

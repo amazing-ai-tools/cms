@@ -583,6 +583,33 @@ p {
   font-size: 0.9rem;
 }
 
+.embed-snippet-panel {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  border: 1px solid #d9ded6;
+  border-radius: 8px;
+  padding: 10px;
+  background: #f8faf6;
+}
+
+.embed-snippet-panel strong {
+  color: #1f2430;
+}
+
+.embed-snippet-panel textarea {
+  min-height: 118px;
+  resize: vertical;
+  border: 1px solid #cfd8ce;
+  border-radius: 8px;
+  padding: 10px;
+  color: #1f2430;
+  background: #fff;
+  font:
+    0.78rem "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  line-height: 1.45;
+}
+
 .input-feed {
   display: grid;
   gap: 8px;
