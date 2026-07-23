@@ -360,12 +360,60 @@ p {
   text-transform: uppercase;
 }
 
+.asset-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.asset-entry {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #d9ded6;
+  border-radius: 8px;
+  background: #fffdf8;
+}
+
+.asset-entry span,
+.asset-entry small {
+  color: #516b58;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
 .chat-composer {
   display: grid;
   gap: 10px;
   margin: 28px 0 0;
   padding: 0;
   border: 0;
+}
+
+.upload-composer {
+  display: grid;
+  gap: 10px;
+  margin: 24px 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.upload-composer label {
+  font-size: 0.84rem;
+  font-weight: 800;
+  color: #394052;
+}
+
+.upload-composer input {
+  width: 100%;
+  border: 1px dashed #aab7a9;
+  border-radius: 8px;
+  padding: 12px;
+  background: #f8faf6;
+  color: #394052;
 }
 
 .segmented-control {

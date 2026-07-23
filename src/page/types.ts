@@ -1,4 +1,5 @@
 export type PageInputType = 'idea' | 'description' | 'link' | 'upload';
+export type MaterialFamily = 'image' | 'media' | 'pdf' | 'word';
 
 export interface PageInput {
   id: string;
@@ -14,8 +15,29 @@ export interface AddPageInputInput {
   content: string;
 }
 
+export interface PageAsset {
+  id: string;
+  pageId: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+  family: MaterialFamily;
+  storageUrl: string;
+  cdnUrl: string | null;
+  uploadState: 'uploaded';
+  createdAt: string;
+}
+
+export interface AddPageAssetInput {
+  pageId: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+}
+
 export interface PageContext {
   pageId: string;
+  assets: PageAsset[];
   draft: null;
   inputs: PageInput[];
   versions: unknown[];
@@ -23,6 +45,7 @@ export interface PageContext {
 }
 
 export interface PageContextService {
+  addAsset(input: AddPageAssetInput): Promise<PageAsset>;
   addInput(input: AddPageInputInput): Promise<PageInput>;
   loadPageContext(pageId: string): Promise<PageContext>;
 }

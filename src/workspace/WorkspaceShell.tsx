@@ -86,6 +86,7 @@ export function WorkspaceShell({
   const [pageContext, setPageContext] = React.useState<PageContext | null>(null);
   const [inputType, setInputType] = React.useState<PageInputType>('idea');
   const [inputText, setInputText] = React.useState('');
+  const [uploadError, setUploadError] = React.useState('');
   const [error, setError] = React.useState('');
   const selectedNode = nodes.find((node) => node.id === selectedNodeId) ?? null;
   const selectionStorageKey = `assisted-cms.selected-node.${workspace.id}`;
@@ -165,6 +166,30 @@ export function WorkspaceShell({
     });
     setPageContext(await pageContextService.loadPageContext(selectedNode.id));
     setInputText('');
+  }
+
+  async function handleUploadMaterials(files: FileList | null) {
+    if (selectedNode?.type !== 'page' || !files) {
+      return;
+    }
+
+    setUploadError('');
+
+    try {
+      for (const file of Array.from(files)) {
+        await pageContextService.addAsset({
+          pageId: selectedNode.id,
+          filename: file.name,
+          mimeType: file.type,
+          size: file.size,
+        });
+      }
+      setPageContext(await pageContextService.loadPageContext(selectedNode.id));
+    } catch (uploadFailure) {
+      setUploadError(
+        uploadFailure instanceof Error ? uploadFailure.message : 'Material upload failed.',
+      );
+    }
   }
 
   return (
@@ -302,6 +327,22 @@ export function WorkspaceShell({
                 <li>Versions: {pageContext?.versions.length ?? 0}</li>
                 <li>Active version: {pageContext?.activePublication ? 'published' : 'none'}</li>
               </ul>
+              {uploadError ? (
+                <div className="auth-error compact" role="alert">
+                  {uploadError}
+                </div>
+              ) : null}
+              {pageContext?.assets.length ? (
+                <div className="asset-list" aria-label={`Uploaded materials for ${selectedNode.title}`}>
+                  {pageContext.assets.map((asset) => (
+                    <article className="asset-entry" key={asset.id}>
+                      <strong>{asset.filename}</strong>
+                      <span>{asset.family}</span>
+                      <small>{asset.uploadState}</small>
+                    </article>
+                  ))}
+                </div>
+              ) : null}
             </>
           ) : (
             <>
@@ -310,6 +351,15 @@ export function WorkspaceShell({
             </>
           )}
         </div>
+        <fieldset className="upload-composer" disabled={selectedNode?.type !== 'page'}>
+          <label htmlFor="material-upload">Upload page materials</label>
+          <input
+            id="material-upload"
+            multiple
+            type="file"
+            onChange={(event) => handleUploadMaterials(event.target.files)}
+          />
+        </fieldset>
         <fieldset className="chat-composer" disabled={selectedNode?.type !== 'page'}>
           <div className="segmented-control" aria-label="Input type">
             <button

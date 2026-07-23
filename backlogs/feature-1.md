@@ -190,7 +190,7 @@ Technical Notes:
 - Disable input entry until a page is selected.
 - Add optimistic UI only if failures can be reconciled clearly.
 
-### Story 3.2: Upload Page Materials
+### [DONE] Story 3.2: Upload Page Materials
 
 As a content manager, I want to upload images, media, PDFs, and Word files so generation can use page-specific materials.
 
