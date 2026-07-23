@@ -29,7 +29,7 @@ describe('authenticated workspace access', () => {
     });
     const workspaceService = createLocalWorkspaceService({
       storageKey: 'workspace-first-data',
-      latencyMs: 10,
+      latencyMs: 50,
     });
 
     render(<App authService={authService} workspaceService={workspaceService} />);
@@ -41,7 +41,7 @@ describe('authenticated workspace access', () => {
   test('loads an existing workspace on later sign-ins', async () => {
     const workspaceService = createLocalWorkspaceService({
       storageKey: 'workspace-existing-data',
-      latencyMs: 10,
+      latencyMs: 50,
     });
     const existingWorkspace = await workspaceService.loadOrCreateWorkspace(owner);
     const authService = createLocalAuthService({

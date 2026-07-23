@@ -1,7 +1,7 @@
 import React from 'react';
 import { FileText, FolderTree, MessageSquareText, Plus, Sparkles } from 'lucide-react';
 import type { ContentNode, ContentNodeType, ContentService } from '../content/types';
-import type { PageContext, PageContextService } from '../page/types';
+import type { PageContext, PageContextService, PageInputType } from '../page/types';
 import type { Workspace } from './types';
 
 interface WorkspaceShellProps {
@@ -84,6 +84,8 @@ export function WorkspaceShell({
   const [nodes, setNodes] = React.useState<ContentNode[]>([]);
   const [selectedNodeId, setSelectedNodeId] = React.useState<string | null>(null);
   const [pageContext, setPageContext] = React.useState<PageContext | null>(null);
+  const [inputType, setInputType] = React.useState<PageInputType>('idea');
+  const [inputText, setInputText] = React.useState('');
   const [error, setError] = React.useState('');
   const selectedNode = nodes.find((node) => node.id === selectedNodeId) ?? null;
   const selectionStorageKey = `assisted-cms.selected-node.${workspace.id}`;
@@ -149,6 +151,20 @@ export function WorkspaceShell({
           : 'Content node could not be created.',
       );
     }
+  }
+
+  async function handleAddInput() {
+    if (selectedNode?.type !== 'page' || !inputText.trim()) {
+      return;
+    }
+
+    await pageContextService.addInput({
+      pageId: selectedNode.id,
+      type: inputType,
+      content: inputText,
+    });
+    setPageContext(await pageContextService.loadPageContext(selectedNode.id));
+    setInputText('');
   }
 
   return (
@@ -269,7 +285,18 @@ export function WorkspaceShell({
           {selectedNode?.type === 'page' ? (
             <>
               <strong>Inputs for {selectedNode.title}</strong>
-              <p>No inputs have been added to this page.</p>
+              {pageContext?.inputs.length ? (
+                <div className="input-feed" aria-label={`Saved inputs for ${selectedNode.title}`}>
+                  {pageContext.inputs.map((input) => (
+                    <article className="input-entry" key={input.id}>
+                      <small>{input.type}</small>
+                      <p>{input.content}</p>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <p>No inputs have been added to this page.</p>
+              )}
               <ul className="context-list">
                 <li>Draft: {pageContext?.draft ? 'generated' : 'not generated'}</li>
                 <li>Versions: {pageContext?.versions.length ?? 0}</li>
@@ -283,10 +310,40 @@ export function WorkspaceShell({
             </>
           )}
         </div>
-        <fieldset className="chat-composer" disabled>
+        <fieldset className="chat-composer" disabled={selectedNode?.type !== 'page'}>
+          <div className="segmented-control" aria-label="Input type">
+            <button
+              aria-pressed={inputType === 'idea'}
+              type="button"
+              onClick={() => setInputType('idea')}
+            >
+              Idea
+            </button>
+            <button
+              aria-pressed={inputType === 'description'}
+              type="button"
+              onClick={() => setInputType('description')}
+            >
+              Description
+            </button>
+          </div>
           <label htmlFor="idea-input">Idea or content description</label>
-          <textarea id="idea-input" placeholder="Select a page before adding inputs" />
-          <button className="button secondary" type="button">
+          <textarea
+            id="idea-input"
+            placeholder={
+              selectedNode?.type === 'page'
+                ? 'Add page-specific context'
+                : 'Select a page before adding inputs'
+            }
+            value={inputText}
+            onChange={(event) => setInputText(event.target.value)}
+          />
+          <button
+            className="button secondary"
+            type="button"
+            disabled={selectedNode?.type !== 'page' || !inputText.trim()}
+            onClick={handleAddInput}
+          >
             Add input
           </button>
         </fieldset>

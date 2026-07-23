@@ -338,12 +338,59 @@ p {
   font-size: 0.9rem;
 }
 
+.input-feed {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.input-entry {
+  padding: 10px;
+  border: 1px solid #d9ded6;
+  border-radius: 8px;
+  background: #f8faf6;
+}
+
+.input-entry small {
+  display: block;
+  margin-bottom: 4px;
+  color: #516b58;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
 .chat-composer {
   display: grid;
   gap: 10px;
   margin: 28px 0 0;
   padding: 0;
   border: 0;
+}
+
+.segmented-control {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid #d9ded6;
+  border-radius: 8px;
+  background: #f8faf6;
+}
+
+.segmented-control button {
+  min-height: 34px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #394052;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.segmented-control button[aria-pressed="true"] {
+  background: #1f5130;
+  color: #fff;
 }
 
 .chat-composer label {

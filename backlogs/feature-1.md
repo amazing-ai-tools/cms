@@ -172,7 +172,7 @@ Technical Notes:
 
 ## Epic 3: Page-Specific Inputs And Chat Panel
 
-### Story 3.1: Right-Side Chat-Style Input Panel
+### [DONE] Story 3.1: Right-Side Chat-Style Input Panel
 
 As a content manager, I want a chat-style panel for page notes and requested content so the AI has page-specific context.
 
