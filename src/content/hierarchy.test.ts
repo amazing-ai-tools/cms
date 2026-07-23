@@ -79,6 +79,58 @@ describe('content hierarchy data model', () => {
     ]);
   });
 
+  test('stores and updates category names and slugs', async () => {
+    const contentService = createLocalContentService({ storageKey: 'hierarchy-category-slugs' });
+    const category = await contentService.createNode({
+      workspaceId: 'workspace-1',
+      parentId: null,
+      type: 'category',
+      title: 'Brand Sites',
+      slug: 'brand-sites',
+    });
+
+    expect(category).toMatchObject({
+      slug: 'brand-sites',
+      title: 'Brand Sites',
+    });
+
+    const updatedCategory = await contentService.updateNode(category.id, {
+      slug: 'campaign-sites',
+      title: 'Campaign Sites',
+    });
+
+    expect(updatedCategory).toMatchObject({
+      id: category.id,
+      slug: 'campaign-sites',
+      title: 'Campaign Sites',
+    });
+    expect(await contentService.listNodes('workspace-1')).toEqual([updatedCategory]);
+  });
+
+  test('deletes empty categories and blocks categories that still have children', async () => {
+    const contentService = createLocalContentService({ storageKey: 'hierarchy-category-delete' });
+    const category = await contentService.createNode({
+      workspaceId: 'workspace-1',
+      parentId: null,
+      type: 'category',
+      title: 'Root',
+    });
+    const childCategory = await contentService.createNode({
+      workspaceId: 'workspace-1',
+      parentId: category.id,
+      type: 'category',
+      title: 'Child',
+    });
+
+    await expect(contentService.deleteNode(category.id)).rejects.toThrow(/child items/i);
+
+    await contentService.deleteNode(childCategory.id);
+    expect(await contentService.listNodes('workspace-1')).toEqual([category]);
+
+    await contentService.deleteNode(category.id);
+    expect(await contentService.listNodes('workspace-1')).toEqual([]);
+  });
+
   test('rejects invalid parent-child relationships', async () => {
     const contentService = createLocalContentService({ storageKey: 'hierarchy-invalid' });
     const category = await contentService.createNode({

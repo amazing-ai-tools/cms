@@ -1,4 +1,10 @@
-import type { ContentNode, ContentNodeType, ContentService, CreateContentNodeInput } from './types';
+import type {
+  ContentNode,
+  ContentNodeType,
+  ContentService,
+  CreateContentNodeInput,
+  UpdateContentNodeInput,
+} from './types';
 
 interface LocalContentServiceOptions {
   storageKey?: string;
@@ -29,6 +35,35 @@ function writeStorage(storageKey: string, storage: ContentStorage) {
 
 function findNode(storage: ContentStorage, nodeId: string) {
   return storage.nodes.find((node) => node.id === nodeId) ?? null;
+}
+
+function isCategoryNodeType(nodeType: ContentNodeType) {
+  return nodeType === 'category' || nodeType === 'subcategory';
+}
+
+function normalizeTitle(title: string) {
+  const normalizedTitle = title.trim();
+  if (!normalizedTitle) {
+    throw new Error('Category name is required.');
+  }
+
+  return normalizedTitle;
+}
+
+function normalizeSlug(slug: string) {
+  const normalizedSlug = slug
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+  if (!normalizedSlug) {
+    throw new Error('Category slug is required.');
+  }
+
+  return normalizedSlug;
 }
 
 function isValidParentType(nodeType: ContentNodeType, parentType: ContentNodeType | null) {
@@ -93,6 +128,7 @@ export function createLocalContentService(options: LocalContentServiceOptions = 
     async createNode(input: CreateContentNodeInput) {
       const storage = readStorage(storageKey);
       assertParentIsValid(storage, input.workspaceId, input.type, input.parentId);
+      const title = normalizeTitle(input.title);
 
       const timestamp = new Date().toISOString();
       const node: ContentNode = {
@@ -100,7 +136,8 @@ export function createLocalContentService(options: LocalContentServiceOptions = 
         workspaceId: input.workspaceId,
         parentId: input.parentId,
         type: input.type,
-        title: input.title,
+        title,
+        slug: isCategoryNodeType(input.type) ? normalizeSlug(input.slug ?? title) : undefined,
         sortOrder: storage.nodes.filter((candidate) => candidate.parentId === input.parentId).length,
         createdAt: timestamp,
         updatedAt: timestamp,
@@ -111,6 +148,21 @@ export function createLocalContentService(options: LocalContentServiceOptions = 
       writeStorage(storageKey, storage);
 
       return node;
+    },
+
+    async deleteNode(nodeId: string) {
+      const storage = readStorage(storageKey);
+      const node = findNode(storage, nodeId);
+      if (!node) {
+        throw new Error('Content node was not found.');
+      }
+
+      if (storage.nodes.some((candidate) => candidate.parentId === nodeId)) {
+        throw new Error('Delete child items before deleting this category.');
+      }
+
+      storage.nodes = storage.nodes.filter((candidate) => candidate.id !== nodeId);
+      writeStorage(storageKey, storage);
     },
 
     async listNodes(workspaceId: string) {
@@ -132,6 +184,31 @@ export function createLocalContentService(options: LocalContentServiceOptions = 
         parentId,
         updatedAt: new Date().toISOString(),
       };
+      storage.nodes = storage.nodes.map((candidate) =>
+        candidate.id === nodeId ? updatedNode : candidate,
+      );
+      writeStorage(storageKey, storage);
+
+      return updatedNode;
+    },
+
+    async updateNode(nodeId: string, input: UpdateContentNodeInput) {
+      const storage = readStorage(storageKey);
+      const node = findNode(storage, nodeId);
+      if (!node) {
+        throw new Error('Content node was not found.');
+      }
+
+      const title = input.title === undefined ? node.title : normalizeTitle(input.title);
+      const updatedNode: ContentNode = {
+        ...node,
+        title,
+        slug: isCategoryNodeType(node.type)
+          ? normalizeSlug(input.slug ?? node.slug ?? title)
+          : node.slug,
+        updatedAt: new Date().toISOString(),
+      };
+
       storage.nodes = storage.nodes.map((candidate) =>
         candidate.id === nodeId ? updatedNode : candidate,
       );

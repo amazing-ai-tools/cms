@@ -306,6 +306,76 @@ p {
   width: 100%;
 }
 
+.category-settings {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid #d9ded6;
+}
+
+.category-settings-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.category-settings-heading strong {
+  color: #1f2430;
+}
+
+.category-settings-heading small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: #516b58;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.category-settings label {
+  display: grid;
+  gap: 6px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #394052;
+}
+
+.category-settings input {
+  min-height: 38px;
+  min-width: 0;
+  border: 1px solid #cfd8ce;
+  border-radius: 8px;
+  padding: 0 10px;
+  background: #fff;
+  color: #1f2430;
+  font: inherit;
+}
+
+.category-settings-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.category-settings-actions .button {
+  justify-content: flex-start;
+  width: 100%;
+}
+
+.button.icon-label.danger {
+  border-color: #e6b3a9;
+  background: #fff2ef;
+  color: #8f2a17;
+}
+
+.category-delete-note {
+  color: #8f2a17;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
 .content-tree {
   display: grid;
   gap: 6px;

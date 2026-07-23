@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, test } from 'vitest';
 import { App } from '../App';
@@ -126,5 +126,55 @@ describe('content node creation controls', () => {
     );
 
     expect(await screen.findByRole('button', { name: /category 1 category/i })).toBeInTheDocument();
+  });
+
+  test('edits category name and slug and deletes only empty categories', async () => {
+    const authService = createLocalAuthService({
+      initialUser: user,
+      storageKey: 'category-edit-delete-auth',
+    });
+    const workspaceService = createLocalWorkspaceService({
+      storageKey: 'category-edit-delete-workspace',
+    });
+    const contentService = createLocalContentService({
+      storageKey: 'category-edit-delete-content',
+    });
+
+    render(
+      <App
+        authService={authService}
+        workspaceService={workspaceService}
+        contentService={contentService}
+      />,
+    );
+
+    await userEvent.click(await screen.findByRole('button', { name: /create root category/i }));
+    await userEvent.click(await screen.findByRole('button', { name: /category 1 category/i }));
+    await userEvent.click(screen.getByRole('button', { name: /create child category/i }));
+    await userEvent.click(await screen.findByRole('button', { name: /category 1 category/i }));
+
+    await userEvent.clear(screen.getByLabelText(/category name/i));
+    await userEvent.type(screen.getByLabelText(/category name/i), 'Campaign Hub');
+    await userEvent.clear(screen.getByLabelText(/category slug/i));
+    await userEvent.type(screen.getByLabelText(/category slug/i), 'campaign-hub');
+    await userEvent.click(screen.getByRole('button', { name: /save category/i }));
+
+    expect(await screen.findByRole('button', { name: /campaign hub category/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/category slug/i)).toHaveValue('campaign-hub');
+    expect(screen.getByRole('button', { name: /delete category/i })).toBeDisabled();
+    expect(screen.getByText(/delete child items before deleting this category/i)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /category 2 category/i }));
+    expect(screen.getByRole('button', { name: /delete category/i })).toBeEnabled();
+    await userEvent.click(screen.getByRole('button', { name: /delete category/i }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: /category 2 category/i })).not.toBeInTheDocument();
+    });
+
+    expect(screen.getByRole('button', { name: /delete category/i })).toBeEnabled();
+    await userEvent.click(screen.getByRole('button', { name: /delete category/i }));
+
+    expect(await screen.findByText(/no categories yet/i)).toBeInTheDocument();
   });
 });

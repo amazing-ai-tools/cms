@@ -7,8 +7,10 @@ import {
   MessageSquareText,
   Paperclip,
   Plus,
+  Save,
   Send,
   Sparkles,
+  Trash2,
   UploadCloud,
 } from 'lucide-react';
 import type { ContentNode, ContentNodeType, ContentService } from '../content/types';
@@ -59,6 +61,18 @@ function canCreateChildCategory(
   node: ContentNode | null,
 ): node is ContentNode & { type: 'category' | 'subcategory' } {
   return node?.type === 'category' || node?.type === 'subcategory';
+}
+
+function slugForCategoryTitle(title: string) {
+  return (
+    title
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'category'
+  );
 }
 
 function childNodesFor(nodes: ContentNode[], parentId: string | null) {
@@ -188,8 +202,18 @@ export function WorkspaceShell({
   const [publishError, setPublishError] = React.useState('');
   const [selectedVersionId, setSelectedVersionId] = React.useState<string | null>(null);
   const [error, setError] = React.useState('');
+  const [categoryForm, setCategoryForm] = React.useState({ title: '', slug: '' });
+  const [isSavingCategory, setIsSavingCategory] = React.useState(false);
+  const [isDeletingCategory, setIsDeletingCategory] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
   const selectedNode = nodes.find((node) => node.id === selectedNodeId) ?? null;
+  const selectedCategory = canCreateChildCategory(selectedNode) ? selectedNode : null;
+  const selectedCategoryHasChildren = selectedCategory
+    ? nodes.some((node) => node.parentId === selectedCategory.id)
+    : false;
+  const categoryFormIsValid = Boolean(categoryForm.title.trim() && categoryForm.slug.trim());
+  const categoryNameInputId = selectedCategory ? `category-name-${selectedCategory.id}` : 'category-name';
+  const categorySlugInputId = selectedCategory ? `category-slug-${selectedCategory.id}` : 'category-slug';
   const selectedVersion =
     pageContext?.versions.find((version) => version.id === selectedVersionId) ?? null;
   const activeVersion =
@@ -207,12 +231,25 @@ export function WorkspaceShell({
   function handleSelectNode(nodeId: string) {
     setSelectedNodeId(nodeId);
     setGenerationJob(null);
+    setError('');
     setPublishError('');
     setSelectedVersionId(null);
     setComposerError('');
     setPendingFiles([]);
     setInputText('');
     window.localStorage.setItem(selectionStorageKey, nodeId);
+  }
+
+  function clearSelection() {
+    setSelectedNodeId(null);
+    setGenerationJob(null);
+    setError('');
+    setPublishError('');
+    setSelectedVersionId(null);
+    setComposerError('');
+    setPendingFiles([]);
+    setInputText('');
+    window.localStorage.removeItem(selectionStorageKey);
   }
 
   React.useEffect(() => {
@@ -232,6 +269,18 @@ export function WorkspaceShell({
       isMounted = false;
     };
   }, [contentService, selectionStorageKey, workspace.id]);
+
+  React.useEffect(() => {
+    if (!selectedCategory) {
+      setCategoryForm({ title: '', slug: '' });
+      return;
+    }
+
+    setCategoryForm({
+      title: selectedCategory.title,
+      slug: selectedCategory.slug ?? slugForCategoryTitle(selectedCategory.title),
+    });
+  }, [selectedCategory?.id, selectedCategory?.slug, selectedCategory?.title]);
 
   React.useEffect(() => {
     if (!isPageCapableNode(selectedNode)) {
@@ -276,6 +325,53 @@ export function WorkspaceShell({
           ? creationError.message
           : 'Content node could not be created.',
       );
+    }
+  }
+
+  async function handleSaveCategory() {
+    if (!selectedCategory || !categoryFormIsValid) {
+      return;
+    }
+
+    try {
+      setIsSavingCategory(true);
+      setError('');
+      const updatedCategory = await contentService.updateNode(selectedCategory.id, {
+        slug: categoryForm.slug,
+        title: categoryForm.title,
+      });
+      setNodes(await contentService.listNodes(workspace.id));
+      setSelectedNodeId(updatedCategory.id);
+      window.localStorage.setItem(selectionStorageKey, updatedCategory.id);
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Category could not be saved.');
+    } finally {
+      setIsSavingCategory(false);
+    }
+  }
+
+  async function handleDeleteCategory() {
+    if (!selectedCategory || selectedCategoryHasChildren) {
+      return;
+    }
+
+    try {
+      setIsDeletingCategory(true);
+      setError('');
+      const nextSelectedNodeId = selectedCategory.parentId;
+      await contentService.deleteNode(selectedCategory.id);
+      const loadedNodes = await contentService.listNodes(workspace.id);
+      setNodes(loadedNodes);
+
+      if (nextSelectedNodeId && loadedNodes.some((node) => node.id === nextSelectedNodeId)) {
+        handleSelectNode(nextSelectedNodeId);
+      } else {
+        clearSelection();
+      }
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : 'Category could not be deleted.');
+    } finally {
+      setIsDeletingCategory(false);
     }
   }
 
@@ -502,6 +598,71 @@ export function WorkspaceShell({
             </button>
           ) : null}
         </div>
+        {selectedCategory ? (
+          <form
+            aria-label="Category settings"
+            className="category-settings"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleSaveCategory();
+            }}
+          >
+            <div className="category-settings-heading">
+              <strong>Category settings</strong>
+              <small>{selectedCategory.slug ?? slugForCategoryTitle(selectedCategory.title)}</small>
+            </div>
+            <label htmlFor={categoryNameInputId}>
+              Category name
+              <input
+                id={categoryNameInputId}
+                type="text"
+                value={categoryForm.title}
+                onChange={(event) =>
+                  setCategoryForm((currentForm) => ({
+                    ...currentForm,
+                    title: event.target.value,
+                  }))
+                }
+              />
+            </label>
+            <label htmlFor={categorySlugInputId}>
+              Category slug
+              <input
+                id={categorySlugInputId}
+                type="text"
+                value={categoryForm.slug}
+                onChange={(event) =>
+                  setCategoryForm((currentForm) => ({
+                    ...currentForm,
+                    slug: event.target.value,
+                  }))
+                }
+              />
+            </label>
+            <div className="category-settings-actions">
+              <button
+                className="button icon-label"
+                type="submit"
+                disabled={!categoryFormIsValid || isSavingCategory}
+              >
+                <Save size={16} />
+                {isSavingCategory ? 'Saving' : 'Save category'}
+              </button>
+              <button
+                className="button secondary icon-label danger"
+                type="button"
+                disabled={selectedCategoryHasChildren || isDeletingCategory}
+                onClick={handleDeleteCategory}
+              >
+                <Trash2 size={16} />
+                {isDeletingCategory ? 'Deleting' : 'Delete category'}
+              </button>
+            </div>
+            {selectedCategoryHasChildren ? (
+              <p className="category-delete-note">Delete child items before deleting this category.</p>
+            ) : null}
+          </form>
+        ) : null}
       </section>
 
       <section className="workspace-panel preview-panel" aria-labelledby="page-preview-title" role="region">
