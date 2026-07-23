@@ -210,7 +210,7 @@ Technical Notes:
 - Implement initial validation for the PRD-listed file families. Detailed limits can remain configurable.
 - Do not require PDF or Word content extraction for the first publishable backlog pass unless the implementation phase adds it explicitly.
 
-### Story 3.3: Link Capture
+### [DONE] Story 3.3: Link Capture
 
 As a content manager, I want to add links for a page so referenced material can inform the generated proposal.
 

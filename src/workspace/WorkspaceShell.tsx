@@ -2,6 +2,7 @@ import React from 'react';
 import { FileText, FolderTree, MessageSquareText, Plus, Sparkles } from 'lucide-react';
 import type { ContentNode, ContentNodeType, ContentService } from '../content/types';
 import type { PageContext, PageContextService, PageInputType } from '../page/types';
+import { normalizeUrl } from '../page/url';
 import type { Workspace } from './types';
 
 interface WorkspaceShellProps {
@@ -86,6 +87,8 @@ export function WorkspaceShell({
   const [pageContext, setPageContext] = React.useState<PageContext | null>(null);
   const [inputType, setInputType] = React.useState<PageInputType>('idea');
   const [inputText, setInputText] = React.useState('');
+  const [linkText, setLinkText] = React.useState('');
+  const [linkError, setLinkError] = React.useState('');
   const [uploadError, setUploadError] = React.useState('');
   const [error, setError] = React.useState('');
   const selectedNode = nodes.find((node) => node.id === selectedNodeId) ?? null;
@@ -166,6 +169,26 @@ export function WorkspaceShell({
     });
     setPageContext(await pageContextService.loadPageContext(selectedNode.id));
     setInputText('');
+  }
+
+  async function handleAddLink() {
+    if (selectedNode?.type !== 'page') {
+      return;
+    }
+
+    try {
+      setLinkError('');
+      const normalizedUrl = normalizeUrl(linkText);
+      await pageContextService.addInput({
+        pageId: selectedNode.id,
+        type: 'link',
+        content: normalizedUrl,
+      });
+      setPageContext(await pageContextService.loadPageContext(selectedNode.id));
+      setLinkText('');
+    } catch {
+      setLinkError('Enter a valid URL.');
+    }
   }
 
   async function handleUploadMaterials(files: FileList | null) {
@@ -351,6 +374,31 @@ export function WorkspaceShell({
             </>
           )}
         </div>
+        <fieldset className="link-composer" disabled={selectedNode?.type !== 'page'}>
+          <label htmlFor="reference-link">Reference link</label>
+          <div className="inline-form">
+            <input
+              id="reference-link"
+              placeholder="https://example.com/source"
+              type="url"
+              value={linkText}
+              onChange={(event) => setLinkText(event.target.value)}
+            />
+            <button
+              className="button secondary"
+              type="button"
+              disabled={selectedNode?.type !== 'page' || !linkText.trim()}
+              onClick={handleAddLink}
+            >
+              Add link
+            </button>
+          </div>
+          {linkError ? (
+            <div className="auth-error compact" role="alert">
+              {linkError}
+            </div>
+          ) : null}
+        </fieldset>
         <fieldset className="upload-composer" disabled={selectedNode?.type !== 'page'}>
           <label htmlFor="material-upload">Upload page materials</label>
           <input
