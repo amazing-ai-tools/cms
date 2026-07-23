@@ -107,6 +107,40 @@ describe('content hierarchy data model', () => {
     expect(await contentService.listNodes('workspace-1')).toEqual([updatedCategory]);
   });
 
+  test('stores and updates page names and slugs', async () => {
+    const contentService = createLocalContentService({ storageKey: 'hierarchy-page-slugs' });
+    const category = await contentService.createNode({
+      workspaceId: 'workspace-1',
+      parentId: null,
+      type: 'category',
+      title: 'Brand Sites',
+    });
+    const page = await contentService.createNode({
+      workspaceId: 'workspace-1',
+      parentId: category.id,
+      type: 'page',
+      title: 'Homepage Hero',
+      slug: 'homepage-hero',
+    });
+
+    expect(page).toMatchObject({
+      slug: 'homepage-hero',
+      title: 'Homepage Hero',
+    });
+
+    const updatedPage = await contentService.updateNode(page.id, {
+      slug: 'campaign-landing',
+      title: 'Campaign Landing',
+    });
+
+    expect(updatedPage).toMatchObject({
+      id: page.id,
+      slug: 'campaign-landing',
+      title: 'Campaign Landing',
+    });
+    expect(await contentService.listNodes('workspace-1')).toEqual([category, updatedPage]);
+  });
+
   test('deletes empty categories and blocks categories that still have children', async () => {
     const contentService = createLocalContentService({ storageKey: 'hierarchy-category-delete' });
     const category = await contentService.createNode({
@@ -129,6 +163,36 @@ describe('content hierarchy data model', () => {
 
     await contentService.deleteNode(category.id);
     expect(await contentService.listNodes('workspace-1')).toEqual([]);
+  });
+
+  test('deletes empty pages and blocks pages that still have children', async () => {
+    const contentService = createLocalContentService({ storageKey: 'hierarchy-page-delete' });
+    const category = await contentService.createNode({
+      workspaceId: 'workspace-1',
+      parentId: null,
+      type: 'category',
+      title: 'Root',
+    });
+    const page = await contentService.createNode({
+      workspaceId: 'workspace-1',
+      parentId: category.id,
+      type: 'page',
+      title: 'Parent page',
+    });
+    const childPage = await contentService.createNode({
+      workspaceId: 'workspace-1',
+      parentId: page.id,
+      type: 'page',
+      title: 'Child page',
+    });
+
+    await expect(contentService.deleteNode(page.id)).rejects.toThrow(/this item/i);
+
+    await contentService.deleteNode(childPage.id);
+    expect(await contentService.listNodes('workspace-1')).toEqual([category, page]);
+
+    await contentService.deleteNode(page.id);
+    expect(await contentService.listNodes('workspace-1')).toEqual([category]);
   });
 
   test('rejects invalid parent-child relationships', async () => {

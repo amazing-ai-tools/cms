@@ -63,7 +63,7 @@ function canCreateChildCategory(
   return node?.type === 'category' || node?.type === 'subcategory';
 }
 
-function slugForCategoryTitle(title: string) {
+function slugForNodeTitle(title: string, fallback: 'category' | 'page') {
   return (
     title
       .trim()
@@ -71,7 +71,7 @@ function slugForCategoryTitle(title: string) {
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
       .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '') || 'category'
+      .replace(/^-+|-+$/g, '') || fallback
   );
 }
 
@@ -202,18 +202,25 @@ export function WorkspaceShell({
   const [publishError, setPublishError] = React.useState('');
   const [selectedVersionId, setSelectedVersionId] = React.useState<string | null>(null);
   const [error, setError] = React.useState('');
-  const [categoryForm, setCategoryForm] = React.useState({ title: '', slug: '' });
-  const [isSavingCategory, setIsSavingCategory] = React.useState(false);
-  const [isDeletingCategory, setIsDeletingCategory] = React.useState(false);
+  const [contentNodeForm, setContentNodeForm] = React.useState({ title: '', slug: '' });
+  const [isSavingContentNode, setIsSavingContentNode] = React.useState(false);
+  const [isDeletingContentNode, setIsDeletingContentNode] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
   const selectedNode = nodes.find((node) => node.id === selectedNodeId) ?? null;
   const selectedCategory = canCreateChildCategory(selectedNode) ? selectedNode : null;
-  const selectedCategoryHasChildren = selectedCategory
-    ? nodes.some((node) => node.parentId === selectedCategory.id)
+  const selectedEditableNode = selectedNode;
+  const selectedEditableNodeHasChildren = selectedEditableNode
+    ? nodes.some((node) => node.parentId === selectedEditableNode.id)
     : false;
-  const categoryFormIsValid = Boolean(categoryForm.title.trim() && categoryForm.slug.trim());
-  const categoryNameInputId = selectedCategory ? `category-name-${selectedCategory.id}` : 'category-name';
-  const categorySlugInputId = selectedCategory ? `category-slug-${selectedCategory.id}` : 'category-slug';
+  const contentNodeFormIsValid = Boolean(contentNodeForm.title.trim() && contentNodeForm.slug.trim());
+  const selectedEditableNodeKind = selectedEditableNode?.type === 'page' ? 'page' : 'category';
+  const selectedEditableNodeLabel = selectedEditableNodeKind === 'page' ? 'Page' : 'Category';
+  const contentNodeNameInputId = selectedEditableNode
+    ? `content-node-name-${selectedEditableNode.id}`
+    : 'content-node-name';
+  const contentNodeSlugInputId = selectedEditableNode
+    ? `content-node-slug-${selectedEditableNode.id}`
+    : 'content-node-slug';
   const selectedVersion =
     pageContext?.versions.find((version) => version.id === selectedVersionId) ?? null;
   const activeVersion =
@@ -271,16 +278,23 @@ export function WorkspaceShell({
   }, [contentService, selectionStorageKey, workspace.id]);
 
   React.useEffect(() => {
-    if (!selectedCategory) {
-      setCategoryForm({ title: '', slug: '' });
+    if (!selectedEditableNode) {
+      setContentNodeForm({ title: '', slug: '' });
       return;
     }
 
-    setCategoryForm({
-      title: selectedCategory.title,
-      slug: selectedCategory.slug ?? slugForCategoryTitle(selectedCategory.title),
+    setContentNodeForm({
+      title: selectedEditableNode.title,
+      slug:
+        selectedEditableNode.slug ??
+        slugForNodeTitle(selectedEditableNode.title, selectedEditableNodeKind),
     });
-  }, [selectedCategory?.id, selectedCategory?.slug, selectedCategory?.title]);
+  }, [
+    selectedEditableNode?.id,
+    selectedEditableNode?.slug,
+    selectedEditableNode?.title,
+    selectedEditableNodeKind,
+  ]);
 
   React.useEffect(() => {
     if (!isPageCapableNode(selectedNode)) {
@@ -328,38 +342,42 @@ export function WorkspaceShell({
     }
   }
 
-  async function handleSaveCategory() {
-    if (!selectedCategory || !categoryFormIsValid) {
+  async function handleSaveContentNode() {
+    if (!selectedEditableNode || !contentNodeFormIsValid) {
       return;
     }
 
     try {
-      setIsSavingCategory(true);
+      setIsSavingContentNode(true);
       setError('');
-      const updatedCategory = await contentService.updateNode(selectedCategory.id, {
-        slug: categoryForm.slug,
-        title: categoryForm.title,
+      const updatedNode = await contentService.updateNode(selectedEditableNode.id, {
+        slug: contentNodeForm.slug,
+        title: contentNodeForm.title,
       });
       setNodes(await contentService.listNodes(workspace.id));
-      setSelectedNodeId(updatedCategory.id);
-      window.localStorage.setItem(selectionStorageKey, updatedCategory.id);
+      setSelectedNodeId(updatedNode.id);
+      window.localStorage.setItem(selectionStorageKey, updatedNode.id);
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : 'Category could not be saved.');
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : `${selectedEditableNodeLabel} could not be saved.`,
+      );
     } finally {
-      setIsSavingCategory(false);
+      setIsSavingContentNode(false);
     }
   }
 
-  async function handleDeleteCategory() {
-    if (!selectedCategory || selectedCategoryHasChildren) {
+  async function handleDeleteContentNode() {
+    if (!selectedEditableNode || selectedEditableNodeHasChildren) {
       return;
     }
 
     try {
-      setIsDeletingCategory(true);
+      setIsDeletingContentNode(true);
       setError('');
-      const nextSelectedNodeId = selectedCategory.parentId;
-      await contentService.deleteNode(selectedCategory.id);
+      const nextSelectedNodeId = selectedEditableNode.parentId;
+      await contentService.deleteNode(selectedEditableNode.id);
       const loadedNodes = await contentService.listNodes(workspace.id);
       setNodes(loadedNodes);
 
@@ -369,9 +387,13 @@ export function WorkspaceShell({
         clearSelection();
       }
     } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : 'Category could not be deleted.');
+      setError(
+        deleteError instanceof Error
+          ? deleteError.message
+          : `${selectedEditableNodeLabel} could not be deleted.`,
+      );
     } finally {
-      setIsDeletingCategory(false);
+      setIsDeletingContentNode(false);
     }
   }
 
@@ -598,41 +620,44 @@ export function WorkspaceShell({
             </button>
           ) : null}
         </div>
-        {selectedCategory ? (
+        {selectedEditableNode ? (
           <form
-            aria-label="Category settings"
-            className="category-settings"
+            aria-label={`${selectedEditableNodeLabel} settings`}
+            className="category-settings content-node-settings"
             onSubmit={(event) => {
               event.preventDefault();
-              void handleSaveCategory();
+              void handleSaveContentNode();
             }}
           >
             <div className="category-settings-heading">
-              <strong>Category settings</strong>
-              <small>{selectedCategory.slug ?? slugForCategoryTitle(selectedCategory.title)}</small>
+              <strong>{selectedEditableNodeLabel} settings</strong>
+              <small>
+                {selectedEditableNode.slug ??
+                  slugForNodeTitle(selectedEditableNode.title, selectedEditableNodeKind)}
+              </small>
             </div>
-            <label htmlFor={categoryNameInputId}>
-              Category name
+            <label htmlFor={contentNodeNameInputId}>
+              {selectedEditableNodeLabel} name
               <input
-                id={categoryNameInputId}
+                id={contentNodeNameInputId}
                 type="text"
-                value={categoryForm.title}
+                value={contentNodeForm.title}
                 onChange={(event) =>
-                  setCategoryForm((currentForm) => ({
+                  setContentNodeForm((currentForm) => ({
                     ...currentForm,
                     title: event.target.value,
                   }))
                 }
               />
             </label>
-            <label htmlFor={categorySlugInputId}>
-              Category slug
+            <label htmlFor={contentNodeSlugInputId}>
+              {selectedEditableNodeLabel} slug
               <input
-                id={categorySlugInputId}
+                id={contentNodeSlugInputId}
                 type="text"
-                value={categoryForm.slug}
+                value={contentNodeForm.slug}
                 onChange={(event) =>
-                  setCategoryForm((currentForm) => ({
+                  setContentNodeForm((currentForm) => ({
                     ...currentForm,
                     slug: event.target.value,
                   }))
@@ -643,23 +668,25 @@ export function WorkspaceShell({
               <button
                 className="button icon-label"
                 type="submit"
-                disabled={!categoryFormIsValid || isSavingCategory}
+                disabled={!contentNodeFormIsValid || isSavingContentNode}
               >
                 <Save size={16} />
-                {isSavingCategory ? 'Saving' : 'Save category'}
+                {isSavingContentNode ? 'Saving' : `Save ${selectedEditableNodeKind}`}
               </button>
               <button
                 className="button secondary icon-label danger"
                 type="button"
-                disabled={selectedCategoryHasChildren || isDeletingCategory}
-                onClick={handleDeleteCategory}
+                disabled={selectedEditableNodeHasChildren || isDeletingContentNode}
+                onClick={handleDeleteContentNode}
               >
                 <Trash2 size={16} />
-                {isDeletingCategory ? 'Deleting' : 'Delete category'}
+                {isDeletingContentNode ? 'Deleting' : `Delete ${selectedEditableNodeKind}`}
               </button>
             </div>
-            {selectedCategoryHasChildren ? (
-              <p className="category-delete-note">Delete child items before deleting this category.</p>
+            {selectedEditableNodeHasChildren ? (
+              <p className="category-delete-note">
+                Delete child items before deleting this {selectedEditableNodeKind}.
+              </p>
             ) : null}
           </form>
         ) : null}

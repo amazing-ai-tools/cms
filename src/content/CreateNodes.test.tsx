@@ -177,4 +177,57 @@ describe('content node creation controls', () => {
 
     expect(await screen.findByText(/no categories yet/i)).toBeInTheDocument();
   });
+
+  test('edits page name and slug and deletes only empty pages', async () => {
+    const authService = createLocalAuthService({
+      initialUser: user,
+      storageKey: 'page-edit-delete-auth',
+    });
+    const workspaceService = createLocalWorkspaceService({
+      storageKey: 'page-edit-delete-workspace',
+    });
+    const contentService = createLocalContentService({
+      storageKey: 'page-edit-delete-content',
+    });
+
+    render(
+      <App
+        authService={authService}
+        workspaceService={workspaceService}
+        contentService={contentService}
+      />,
+    );
+
+    await userEvent.click(await screen.findByRole('button', { name: /create root category/i }));
+    await userEvent.click(await screen.findByRole('button', { name: /^create page$/i }));
+    await userEvent.click(await screen.findByRole('button', { name: /^page 1 page$/i }));
+    await userEvent.click(screen.getByRole('button', { name: /create child page/i }));
+    await userEvent.click(await screen.findByRole('button', { name: /^page 1 page$/i }));
+
+    await userEvent.clear(screen.getByLabelText(/page name/i));
+    await userEvent.type(screen.getByLabelText(/page name/i), 'Landing Page');
+    await userEvent.clear(screen.getByLabelText(/page slug/i));
+    await userEvent.type(screen.getByLabelText(/page slug/i), 'landing-page');
+    await userEvent.click(screen.getByRole('button', { name: /save page/i }));
+
+    expect(await screen.findByRole('button', { name: /landing page page/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/page slug/i)).toHaveValue('landing-page');
+    expect(screen.getByRole('button', { name: /delete page/i })).toBeDisabled();
+    expect(screen.getByText(/delete child items before deleting this page/i)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /child page 1 page/i }));
+    expect(screen.getByRole('button', { name: /delete page/i })).toBeEnabled();
+    await userEvent.click(screen.getByRole('button', { name: /delete page/i }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: /child page 1 page/i })).not.toBeInTheDocument();
+    });
+
+    expect(screen.getByRole('button', { name: /delete page/i })).toBeEnabled();
+    await userEvent.click(screen.getByRole('button', { name: /delete page/i }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: /landing page page/i })).not.toBeInTheDocument();
+    });
+  });
 });

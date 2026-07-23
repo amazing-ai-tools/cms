@@ -37,14 +37,10 @@ function findNode(storage: ContentStorage, nodeId: string) {
   return storage.nodes.find((node) => node.id === nodeId) ?? null;
 }
 
-function isCategoryNodeType(nodeType: ContentNodeType) {
-  return nodeType === 'category' || nodeType === 'subcategory';
-}
-
 function normalizeTitle(title: string) {
   const normalizedTitle = title.trim();
   if (!normalizedTitle) {
-    throw new Error('Category name is required.');
+    throw new Error('Content name is required.');
   }
 
   return normalizedTitle;
@@ -60,7 +56,7 @@ function normalizeSlug(slug: string) {
     .replace(/^-+|-+$/g, '');
 
   if (!normalizedSlug) {
-    throw new Error('Category slug is required.');
+    throw new Error('Content slug is required.');
   }
 
   return normalizedSlug;
@@ -137,7 +133,7 @@ export function createLocalContentService(options: LocalContentServiceOptions = 
         parentId: input.parentId,
         type: input.type,
         title,
-        slug: isCategoryNodeType(input.type) ? normalizeSlug(input.slug ?? title) : undefined,
+        slug: normalizeSlug(input.slug ?? title),
         sortOrder: storage.nodes.filter((candidate) => candidate.parentId === input.parentId).length,
         createdAt: timestamp,
         updatedAt: timestamp,
@@ -158,7 +154,7 @@ export function createLocalContentService(options: LocalContentServiceOptions = 
       }
 
       if (storage.nodes.some((candidate) => candidate.parentId === nodeId)) {
-        throw new Error('Delete child items before deleting this category.');
+        throw new Error('Delete child items before deleting this item.');
       }
 
       storage.nodes = storage.nodes.filter((candidate) => candidate.id !== nodeId);
@@ -203,9 +199,7 @@ export function createLocalContentService(options: LocalContentServiceOptions = 
       const updatedNode: ContentNode = {
         ...node,
         title,
-        slug: isCategoryNodeType(node.type)
-          ? normalizeSlug(input.slug ?? node.slug ?? title)
-          : node.slug,
+        slug: normalizeSlug(input.slug ?? node.slug ?? title),
         updatedAt: new Date().toISOString(),
       };
 
