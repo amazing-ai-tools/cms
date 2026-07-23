@@ -64,7 +64,7 @@ Use this as implementation guidance, not a mandatory schema name list.
 
 ## Epic 1: Google Authentication And Workspace Foundation
 
-### Story 1.1: Google Sign-In Gate
+### [DONE] Story 1.1: Google Sign-In Gate
 
 As a content manager, I want to sign in with Google so I can access my CMS workspace.
 
@@ -82,7 +82,7 @@ Technical Notes:
 - Persist only the session/user data needed by the CMS.
 - Add tests for signed-out redirect/gate behavior and signed-in workspace access.
 
-### Story 1.2: Authenticated Workspace Creation And Access
+### [DONE] Story 1.2: Authenticated Workspace Creation And Access
 
 As a content manager, I want my workspace to be created or loaded after login so my content belongs to my Google account.
 
@@ -99,7 +99,7 @@ Technical Notes:
 - Keep workspace ownership checks in the backend/API layer, not only in the UI.
 - Add local seed or fixture support for development.
 
-### Story 1.3: CMS Workspace Shell
+### [DONE] Story 1.3: CMS Workspace Shell
 
 As a content manager, I want a dedicated workspace shell so I can navigate content, preview pages, and manage page inputs from one place.
 
@@ -118,7 +118,7 @@ Technical Notes:
 
 ## Epic 2: Hierarchical Content Structure
 
-### Story 2.1: Content Hierarchy Data Model
+### [DONE] Story 2.1: Content Hierarchy Data Model
 
 As a content manager, I want categories, subcategories, and pages to share a consistent hierarchy so I can organize content across multiple sites.
 
@@ -136,7 +136,7 @@ Technical Notes:
 - Keep ordering fields available for future manual ordering.
 - Enforce hierarchy validation in the API or persistence layer.
 
-### Story 2.2: Create Categories, Subcategories, And Pages
+### [DONE] Story 2.2: Create Categories, Subcategories, And Pages
 
 As a content manager, I want to create content nodes in the selected hierarchy location so the structure matches my external sites.
 
@@ -154,7 +154,7 @@ Technical Notes:
 - Generate sensible default titles for new nodes and allow page titles to be edited through the page editing story.
 - Add tests for valid and invalid parent selections.
 
-### Story 2.3: Select And Load Page Context
+### [DONE] Story 2.3: Select And Load Page Context
 
 As a content manager, I want selecting a page to load that page's draft, inputs, versions, and publication state.
 
@@ -172,7 +172,7 @@ Technical Notes:
 
 ## Epic 3: Page-Specific Inputs And Chat Panel
 
-### Story 3.1: Right-Side Chat-Style Input Panel
+### [DONE] Story 3.1: Right-Side Chat-Style Input Panel
 
 As a content manager, I want a chat-style panel for page notes and requested content so the AI has page-specific context.
 
@@ -190,7 +190,7 @@ Technical Notes:
 - Disable input entry until a page is selected.
 - Add optimistic UI only if failures can be reconciled clearly.
 
-### Story 3.2: Upload Page Materials
+### [DONE] Story 3.2: Upload Page Materials
 
 As a content manager, I want to upload images, media, PDFs, and Word files so generation can use page-specific materials.
 
@@ -210,7 +210,7 @@ Technical Notes:
 - Implement initial validation for the PRD-listed file families. Detailed limits can remain configurable.
 - Do not require PDF or Word content extraction for the first publishable backlog pass unless the implementation phase adds it explicitly.
 
-### Story 3.3: Link Capture
+### [DONE] Story 3.3: Link Capture
 
 As a content manager, I want to add links for a page so referenced material can inform the generated proposal.
 
@@ -228,7 +228,7 @@ Technical Notes:
 
 ## Epic 4: AI-Assisted Generation And Draft Editing
 
-### Story 4.1: Generate Action And Generation Visibility
+### [DONE] Story 4.1: Generate Action And Generation Visibility
 
 As a content manager, I want to click Generate in the preview area and see what is being generated.
 
@@ -246,7 +246,7 @@ Technical Notes:
 - Include page inputs, attachment references, current draft state, and page hierarchy context in the generation request.
 - Make generation status pollable or streamable behind an adapter.
 
-### Story 4.2: Structured Generation Output
+### [DONE] Story 4.2: Structured Generation Output
 
 As a content manager, I want generated output to include both page content and layout or positioning so the page is usable as a proposal.
 
@@ -263,7 +263,7 @@ Technical Notes:
 - Validate AI output before saving it as the active draft.
 - Add a deterministic local generation adapter for development and tests if the AI provider is unavailable locally.
 
-### Story 4.3: Render Generated Draft Preview
+### [DONE] Story 4.3: Render Generated Draft Preview
 
 As a content manager, I want to preview generated content so I can evaluate the page before publishing.
 
@@ -280,7 +280,7 @@ Technical Notes:
 - Avoid coupling the renderer to editing controls.
 - Add tests for rendering text blocks, media blocks, and style attributes.
 
-### Story 4.4: Edit Generated Page Attributes
+### [DONE] Story 4.4: Edit Generated Page Attributes
 
 As a content manager, I want to edit generated content and visual attributes so the page matches my intended presentation.
 
@@ -298,7 +298,7 @@ Technical Notes:
 - Persist edits as draft changes only.
 - Avoid exposing raw JSON as the primary editing interface.
 
-### Story 4.5: Draft State And Dirty Tracking
+### [DONE] Story 4.5: Draft State And Dirty Tracking
 
 As a content manager, I want unpublished changes to stay in draft state so publishing remains an intentional action.
 
@@ -317,7 +317,7 @@ Technical Notes:
 
 ## Epic 5: Publish Workflow, Versioning, And CMS Version Navigation
 
-### Story 5.1: Publish Draft To Version
+### [DONE] Story 5.1: Publish Draft To Version
 
 As a content manager, I want publishing to create a version so I can control what is functional and active.
 
@@ -334,7 +334,7 @@ Technical Notes:
 - Use transactional behavior where possible so version creation and active version update do not diverge.
 - Record the user and timestamp for each publish.
 
-### Story 5.2: Active Functional Version
+### [DONE] Story 5.2: Active Functional Version
 
 As a content manager, I want the latest published version to become active so external sites load the intended content.
 
@@ -351,7 +351,7 @@ Technical Notes:
 - Do not infer active version from max version number alone if publication failed.
 - Add tests for first publish, republish, and failed publish behavior.
 
-### Story 5.3: Version Navigation In The CMS
+### [DONE] Story 5.3: Version Navigation In The CMS
 
 As a content manager, I want to view available versions for a page and navigate between them inside the CMS.
 
@@ -369,7 +369,7 @@ Technical Notes:
 
 ## Epic 6: CDN Publication And External Embed
 
-### Story 6.1: Build Publishable Asset Manifest
+### [DONE] Story 6.1: Build Publishable Asset Manifest
 
 As a content manager, I want published page content, JavaScript, and media assets packaged for CDN delivery.
 
@@ -386,7 +386,7 @@ Technical Notes:
 - Keep CMS-only draft data out of public manifests.
 - Use stable paths that can support multiple pages and versions.
 
-### Story 6.2: CDN Delivery Integration
+### [DONE] Story 6.2: CDN Delivery Integration
 
 As a content manager, I want published content and assets to be available from a CDN so external sites can load them reliably.
 
@@ -404,7 +404,7 @@ Technical Notes:
 - For local development, provide a static/public-file adapter that behaves like CDN output.
 - Avoid blocking the UI indefinitely while publication verifies delivery.
 
-### Story 6.3: External Embed Script
+### [DONE] Story 6.3: External Embed Script
 
 As a content manager, I want a script snippet for a published page so external sites can embed the active version.
 
@@ -421,7 +421,7 @@ Technical Notes:
 - The detailed embed API, security rules, domain rules, and SEO behavior remain out of scope beyond a working embed.
 - Add a sample local external host page or test fixture to verify the script.
 
-### Story 6.4: End-To-End Publish And Embed Verification
+### [DONE] Story 6.4: End-To-End Publish And Embed Verification
 
 As a content manager, I want confidence that a published page works outside the CMS.
 
