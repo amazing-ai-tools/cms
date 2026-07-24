@@ -1,12 +1,14 @@
 export type PageInputType = 'instruction' | 'idea' | 'description' | 'link' | 'upload';
-export type MaterialFamily = 'document' | 'image' | 'media' | 'pdf' | 'word';
+export type MaterialFamily = 'audio' | 'document' | 'image' | 'media' | 'pdf' | 'video' | 'word';
 export type PageAssetSourceEncoding = 'text' | 'data-url';
+export type PageSourceIntent = 'context' | 'required';
 
 export interface PageInput {
   id: string;
   pageId: string;
   type: PageInputType;
   content: string;
+  sourceIntent: PageSourceIntent;
   createdAt: string;
 }
 
@@ -14,6 +16,7 @@ export interface AddPageInputInput {
   pageId: string;
   type: PageInputType;
   content: string;
+  sourceIntent?: PageSourceIntent;
 }
 
 export interface PageAsset {
@@ -27,6 +30,7 @@ export interface PageAsset {
   cdnUrl: string | null;
   sourceContent?: string;
   sourceEncoding?: PageAssetSourceEncoding;
+  sourceIntent: PageSourceIntent;
   uploadState: 'uploaded';
   createdAt: string;
 }
@@ -38,6 +42,7 @@ export interface AddPageAssetInput {
   size: number;
   sourceContent?: string;
   sourceEncoding?: PageAssetSourceEncoding;
+  sourceIntent?: PageSourceIntent;
 }
 
 export type PageDraftBlockType = 'hero' | 'text' | 'media';
@@ -87,6 +92,13 @@ export interface PageDraftVisual {
   spacing: PageDraftSpacing;
 }
 
+export interface PageDraftLocalization {
+  title: string;
+  blocks: PageDraftBlock[];
+  layout?: PageDraftLayout;
+  visual?: PageDraftVisual;
+}
+
 export interface PageDraft {
   id: string;
   pageId: string;
@@ -95,6 +107,8 @@ export interface PageDraft {
   blocks: PageDraftBlock[];
   layout: PageDraftLayout;
   visual: PageDraftVisual;
+  language?: string;
+  localizations?: Record<string, PageDraftLocalization>;
   createdAt: string;
   updatedAt: string;
 }
@@ -107,6 +121,8 @@ export interface SavePageDraftInput {
   blocks: PageDraftBlock[];
   layout: PageDraftLayout;
   visual: PageDraftVisual;
+  language?: string;
+  localizations?: Record<string, PageDraftLocalization>;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -116,6 +132,9 @@ export interface PublishedAssetReference {
   cdnUrl: string | null;
   filename: string;
   mimeType: string;
+  sourceContent?: string;
+  sourceEncoding?: PageAssetSourceEncoding;
+  sourceIntent?: PageSourceIntent;
   storageUrl: string;
 }
 
@@ -127,6 +146,8 @@ export interface PublishedVersion {
   contentSnapshot: PageDraftBlock[];
   layoutSnapshot: PageDraftLayout;
   visualSnapshot: PageDraftVisual;
+  language?: string;
+  localizations?: Record<string, PageDraftLocalization>;
   assetManifest: PublishedAssetReference[];
   manifest: PublishableAssetManifest;
   cdnUrls: {
@@ -156,6 +177,9 @@ export interface PublishableAssetManifest {
     blocks: PageDraftBlock[];
     layout: PageDraftLayout;
     visual: PageDraftVisual;
+    language?: string;
+    localizations?: Record<string, PageDraftLocalization>;
+    mediaAssets: PublishedAssetReference[];
   };
   mediaAssets: PublishedAssetReference[];
   cache: {

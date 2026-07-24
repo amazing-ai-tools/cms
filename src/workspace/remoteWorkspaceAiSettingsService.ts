@@ -3,6 +3,7 @@ import type {
   WorkspaceAiSettings,
   WorkspaceAiSettingsService,
 } from './aiSettings';
+import { normalizeWorkspaceLanguages } from './aiSettings';
 
 type SettingsFetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
@@ -36,6 +37,13 @@ function messageFromResponse(body: Awaited<ReturnType<typeof parseResponse>>, st
   return `AI settings request failed with status ${status}.`;
 }
 
+function normalizeSettings(settings: WorkspaceAiSettings): WorkspaceAiSettings {
+  return {
+    ...settings,
+    languages: normalizeWorkspaceLanguages(settings.languages),
+  };
+}
+
 export function createRemoteWorkspaceAiSettingsService(
   options: RemoteWorkspaceAiSettingsServiceOptions = {},
 ): WorkspaceAiSettingsService {
@@ -51,7 +59,7 @@ export function createRemoteWorkspaceAiSettingsService(
         throw new Error(messageFromResponse(body, response.status));
       }
 
-      return body;
+      return normalizeSettings(body);
     },
 
     async saveSettings(workspaceId: string, input: SaveWorkspaceAiSettingsInput) {
@@ -66,7 +74,7 @@ export function createRemoteWorkspaceAiSettingsService(
         throw new Error(messageFromResponse(body, response.status));
       }
 
-      return body;
+      return normalizeSettings(body);
     },
   };
 }

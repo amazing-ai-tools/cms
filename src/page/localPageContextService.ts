@@ -53,6 +53,22 @@ function normalizeDraft(draft: PageDraft): PageDraft {
   return {
     ...draft,
     isDirty: draft.isDirty ?? true,
+    language: draft.language ?? 'en',
+    localizations: draft.localizations ?? {},
+  };
+}
+
+function normalizeInput(input: PageInput): PageInput {
+  return {
+    ...input,
+    sourceIntent: input.sourceIntent ?? 'context',
+  };
+}
+
+function normalizeAsset(asset: PageAsset): PageAsset {
+  return {
+    ...asset,
+    sourceIntent: asset.sourceIntent ?? 'context',
   };
 }
 
@@ -65,9 +81,9 @@ function readStorage(storageKey: string): PageContextStorage {
   try {
     const parsed = JSON.parse(rawStorage) as Partial<PageContextStorage>;
     return {
-      assets: parsed.assets ?? [],
+      assets: (parsed.assets ?? []).map(normalizeAsset),
       drafts: (parsed.drafts ?? []).map(normalizeDraft),
-      inputs: parsed.inputs ?? [],
+      inputs: (parsed.inputs ?? []).map(normalizeInput),
       nextAssetId: parsed.nextAssetId ?? 1,
       nextDraftId: parsed.nextDraftId ?? 1,
       nextInputId: parsed.nextInputId ?? 1,
@@ -92,8 +108,12 @@ function materialFamilyFor(filename: string, mimeType: string): MaterialFamily {
     return 'image';
   }
 
-  if (mimeType.startsWith('audio/') || mimeType.startsWith('video/')) {
-    return 'media';
+  if (mimeType.startsWith('audio/')) {
+    return 'audio';
+  }
+
+  if (mimeType.startsWith('video/')) {
+    return 'video';
   }
 
   if (mimeType === 'application/pdf' || lowerFilename.endsWith('.pdf')) {
@@ -153,6 +173,7 @@ export function createLocalPageContextService(
         cdnUrl: null,
         sourceContent: input.sourceContent,
         sourceEncoding: input.sourceEncoding,
+        sourceIntent: input.sourceIntent ?? 'context',
         uploadState: 'uploaded',
         createdAt: new Date().toISOString(),
       };
@@ -171,6 +192,7 @@ export function createLocalPageContextService(
         pageId: input.pageId,
         type: input.type,
         content: input.content.trim(),
+        sourceIntent: input.sourceIntent ?? 'context',
         createdAt: new Date().toISOString(),
       };
 
@@ -237,10 +259,15 @@ export function createLocalPageContextService(
         contentSnapshot: copySnapshot(draft.blocks),
         layoutSnapshot: copySnapshot(draft.layout),
         visualSnapshot: copySnapshot(draft.visual),
+        language: draft.language ?? 'en',
+        localizations: copySnapshot(draft.localizations ?? {}),
         assetManifest: pageAssets.map((asset) => ({
           assetId: asset.id,
           filename: asset.filename,
           mimeType: asset.mimeType,
+          sourceContent: asset.sourceContent,
+          sourceEncoding: asset.sourceEncoding,
+          sourceIntent: asset.sourceIntent,
           storageUrl: asset.storageUrl,
           cdnUrl: asset.cdnUrl,
         })),
@@ -314,6 +341,8 @@ export function createLocalPageContextService(
         blocks: input.blocks,
         layout: input.layout,
         visual: input.visual,
+        language: input.language ?? existingDraft?.language ?? 'en',
+        localizations: input.localizations ?? existingDraft?.localizations ?? {},
         createdAt: input.createdAt ?? existingDraft?.createdAt ?? now,
         updatedAt: input.updatedAt ?? now,
       };

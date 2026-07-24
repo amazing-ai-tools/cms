@@ -58,22 +58,24 @@ async function renderWorkspaceWithPage() {
 }
 
 describe('page material uploads', () => {
-  test('uploads images, media, PDFs, and Word files against the selected page', async () => {
+  test('uploads images, audio, video, PDFs, and Word files against the selected page', async () => {
     const inputsPanel = await renderWorkspaceWithPage();
     const uploadInput = within(inputsPanel).getByLabelText(/attach materials/i);
     const image = new File(['image'], 'hero.png', { type: 'image/png' });
-    const media = new File(['media'], 'launch.mp4', { type: 'video/mp4' });
+    const audio = new File(['audio'], 'intro.mp3', { type: 'audio/mpeg' });
+    const video = new File(['video'], 'launch.mp4', { type: 'video/mp4' });
     const pdf = new File(['pdf'], 'brief.pdf', { type: 'application/pdf' });
     const word = new File(['word'], 'outline.docx', {
       type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     });
 
-    await userEvent.upload(uploadInput, [image, media, pdf, word]);
+    await userEvent.upload(uploadInput, [image, audio, video, pdf, word]);
     await userEvent.click(within(inputsPanel).getByRole('button', { name: /send/i }));
 
     for (const [filename, family] of [
       ['hero.png', 'image'],
-      ['launch.mp4', 'media'],
+      ['intro.mp3', 'audio'],
+      ['launch.mp4', 'video'],
       ['brief.pdf', 'pdf'],
       ['outline.docx', 'word'],
     ] as const) {

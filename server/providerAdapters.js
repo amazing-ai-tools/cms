@@ -57,7 +57,7 @@ export async function generateWithOpenAi({ apiKey, effort, fetcher, model, promp
       { role: 'system', content: prompt.system },
       { role: 'user', content: prompt.user },
     ],
-    max_output_tokens: 4096,
+    max_output_tokens: 6000,
     model,
     ...(effort ? { reasoning: { effort } } : {}),
     text: {
@@ -109,7 +109,7 @@ export async function generateWithXai({ apiKey, fetcher, model, prompt }) {
 
 export async function generateWithAnthropic({ apiKey, effort, fetcher, model, prompt }) {
   const body = {
-    max_tokens: 4096,
+    max_tokens: 6000,
     messages: [{ role: 'user', content: prompt.user }],
     model,
     output_config: {

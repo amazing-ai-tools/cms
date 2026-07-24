@@ -26,6 +26,7 @@ import type {
   PageContextService,
   PageDraft,
   PageInputType,
+  PageSourceIntent,
   PublishedVersion,
 } from '../page/types';
 import { readUploadSourceForFile } from '../page/uploadSource';
@@ -33,6 +34,7 @@ import { normalizeUrl } from '../page/url';
 import {
   defaultWorkspaceAiSettings,
   effortOptionsFor,
+  WORKSPACE_LANGUAGE_OPTIONS,
   type WorkspaceAiSettings,
   type WorkspaceAiSettingsService,
 } from './aiSettings';
@@ -177,6 +179,8 @@ function draftForVersion(version: PublishedVersion): PageDraft {
     blocks: version.contentSnapshot,
     layout: version.layoutSnapshot,
     visual: version.visualSnapshot,
+    language: version.language,
+    localizations: version.localizations,
     createdAt: version.createdAt,
     updatedAt: version.createdAt,
   };
@@ -206,6 +210,7 @@ export function WorkspaceShell({
   const [selectedNodeId, setSelectedNodeId] = React.useState<string | null>(null);
   const [pageContext, setPageContext] = React.useState<PageContext | null>(null);
   const [inputType, setInputType] = React.useState<PageInputType>('instruction');
+  const [sourceIntent, setSourceIntent] = React.useState<PageSourceIntent>('context');
   const [inputText, setInputText] = React.useState('');
   const [pendingFiles, setPendingFiles] = React.useState<File[]>([]);
   const [composerError, setComposerError] = React.useState('');
@@ -223,12 +228,14 @@ export function WorkspaceShell({
   const [aiForm, setAiForm] = React.useState({
     apiKey: '',
     effort: '',
+    languages: ['en'],
     model: 'grok-4.5',
     provider: 'xai',
   });
   const [aiSettingsError, setAiSettingsError] = React.useState('');
   const [isAiSettingsOpen, setIsAiSettingsOpen] = React.useState(false);
   const [isSavingAiSettings, setIsSavingAiSettings] = React.useState(false);
+  const [previewLanguage, setPreviewLanguage] = React.useState('en');
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
   const selectedNode = nodes.find((node) => node.id === selectedNodeId) ?? null;
   const selectedCategory = canCreateChildCategory(selectedNode) ? selectedNode : null;
@@ -256,6 +263,17 @@ export function WorkspaceShell({
   const previewDraft = selectedVersion
     ? draftForVersion(selectedVersion)
     : pageContext?.draft ?? null;
+  const previewLanguageOptions = previewDraft
+    ? Array.from(
+        new Set([
+          previewDraft.language ?? 'en',
+          ...Object.keys(previewDraft.localizations ?? {}),
+        ]),
+      )
+    : ['en'];
+  const selectedPreviewLanguage = previewLanguageOptions.includes(previewLanguage)
+    ? previewLanguage
+    : previewLanguageOptions[0] ?? 'en';
   const isGenerating = generationJob?.status === 'queued' || generationJob?.status === 'running';
   const selectionStorageKey = `assisted-cms.selected-node.${workspace.id}`;
   const selectedProviderOption = aiSettings.availableProviders.find(
@@ -324,6 +342,7 @@ export function WorkspaceShell({
         setAiForm({
           apiKey: '',
           effort: loadedSettings.effort ?? '',
+          languages: loadedSettings.languages,
           model: loadedSettings.model,
           provider: loadedSettings.provider,
         });
@@ -338,6 +357,7 @@ export function WorkspaceShell({
         setAiForm({
           apiKey: '',
           effort: fallback.effort ?? '',
+          languages: fallback.languages,
           model: fallback.model,
           provider: fallback.provider,
         });
@@ -395,6 +415,20 @@ export function WorkspaceShell({
       isMounted = false;
     };
   }, [pageContextService, selectedNode, selectedVersionId]);
+
+  React.useEffect(() => {
+    if (!previewDraft) {
+      setPreviewLanguage('en');
+      return;
+    }
+
+    const languages = Array.from(
+      new Set([previewDraft.language ?? 'en', ...Object.keys(previewDraft.localizations ?? {})]),
+    );
+    if (!languages.includes(previewLanguage)) {
+      setPreviewLanguage(languages[0] ?? 'en');
+    }
+  }, [previewDraft?.id, previewDraft?.updatedAt, selectedVersionId, previewLanguage]);
 
   async function handleCreate(type: ContentNodeType, parentId: string | null) {
     const parent = parentId ? nodes.find((node) => node.id === parentId) ?? null : null;
@@ -492,6 +526,7 @@ export function WorkspaceShell({
           pageId: selectedNode.id,
           type: inputType,
           content: inputText,
+          sourceIntent,
         });
       }
 
@@ -500,6 +535,7 @@ export function WorkspaceShell({
           pageId: selectedNode.id,
           type: 'link',
           content: link,
+          sourceIntent,
         });
       }
 
@@ -510,6 +546,7 @@ export function WorkspaceShell({
           filename: file.name,
           mimeType: file.type,
           size: file.size,
+          sourceIntent,
           ...uploadSource,
         });
       }
@@ -546,6 +583,7 @@ export function WorkspaceShell({
       const result = await generationService.generateDraft({
         ai: {
           ...(effortOptions.length && aiForm.effort ? { effort: aiForm.effort } : {}),
+          languages: aiForm.languages,
           model: aiForm.model,
           provider: aiForm.provider,
         },
@@ -594,6 +632,7 @@ export function WorkspaceShell({
       const nextSettings = await workspaceAiSettingsService.saveSettings(workspace.id, {
         ...(aiForm.apiKey.trim() ? { apiKey: aiForm.apiKey.trim() } : {}),
         ...(effortOptions.length && aiForm.effort ? { effort: aiForm.effort } : {}),
+        languages: aiForm.languages,
         model: aiForm.model,
         provider: aiForm.provider,
       });
@@ -601,6 +640,7 @@ export function WorkspaceShell({
       setAiForm({
         apiKey: '',
         effort: nextSettings.effort ?? '',
+        languages: nextSettings.languages,
         model: nextSettings.model,
         provider: nextSettings.provider,
       });
@@ -613,6 +653,19 @@ export function WorkspaceShell({
     } finally {
       setIsSavingAiSettings(false);
     }
+  }
+
+  function toggleAiLanguage(language: string) {
+    setAiForm((currentForm) => {
+      const languages = currentForm.languages.includes(language)
+        ? currentForm.languages.filter((candidate) => candidate !== language)
+        : [...currentForm.languages, language];
+
+      return {
+        ...currentForm,
+        languages: languages.length ? languages : currentForm.languages,
+      };
+    });
   }
 
   async function handleDraftChange(nextDraft: PageDraft) {
@@ -673,7 +726,13 @@ export function WorkspaceShell({
       return;
     }
 
-    window.open(`/preview/${encodeURIComponent(selectedNode.id)}`, '_blank', 'noopener,noreferrer');
+    window.open(
+      `/preview/${encodeURIComponent(selectedNode.id)}?lang=${encodeURIComponent(
+        selectedPreviewLanguage,
+      )}`,
+      '_blank',
+      'noopener,noreferrer',
+    );
   }
 
   return (
@@ -790,6 +849,23 @@ export function WorkspaceShell({
                   )}
                 </select>
               </label>
+              <fieldset className="workspace-language-settings">
+                <legend>Generation languages</legend>
+                <div className="language-checkbox-grid">
+                  {WORKSPACE_LANGUAGE_OPTIONS.map((languageOption) => (
+                    <label key={languageOption.code} htmlFor={`workspace-language-${languageOption.code}`}>
+                      <input
+                        checked={aiForm.languages.includes(languageOption.code)}
+                        id={`workspace-language-${languageOption.code}`}
+                        type="checkbox"
+                        value={languageOption.code}
+                        onChange={() => toggleAiLanguage(languageOption.code)}
+                      />
+                      {languageOption.label}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
               <label htmlFor="workspace-api-key">
                 Workspace API key
                 <input
@@ -1059,7 +1135,25 @@ export function WorkspaceShell({
         ) : null}
         {isPageCapableNode(selectedNode) && previewDraft ? (
           <>
-            <PageDraftPreview assets={pageContext?.assets ?? []} draft={previewDraft} />
+            <label className="preview-language-selector" htmlFor="workspace-preview-language">
+              Preview language
+              <select
+                id="workspace-preview-language"
+                value={selectedPreviewLanguage}
+                onChange={(event) => setPreviewLanguage(event.target.value)}
+              >
+                {previewLanguageOptions.map((language) => (
+                  <option key={language} value={language}>
+                    {language}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <PageDraftPreview
+              assets={pageContext?.assets ?? []}
+              draft={previewDraft}
+              language={selectedPreviewLanguage}
+            />
             {selectedVersion ? null : (
               <PageDraftEditor draft={previewDraft} onDraftChange={handleDraftChange} />
             )}
@@ -1095,6 +1189,9 @@ export function WorkspaceShell({
                   {pageContext.inputs.map((input) => (
                     <article className="input-entry" key={input.id}>
                       <small>{input.type}</small>
+                      <span className={`source-intent-badge ${input.sourceIntent}`}>
+                        {input.sourceIntent === 'required' ? 'Must appear' : 'AI context'}
+                      </span>
                       <p>{input.content}</p>
                     </article>
                   ))}
@@ -1113,7 +1210,7 @@ export function WorkspaceShell({
                   <textarea
                     aria-label="Embed script"
                     readOnly
-                    value={buildEmbedSnippet(activeVersion)}
+                    value={buildEmbedSnippet(activeVersion, selectedPreviewLanguage)}
                   />
                 ) : (
                   <p>Publish this page before embedding.</p>
@@ -1125,6 +1222,9 @@ export function WorkspaceShell({
                     <article className="asset-entry" key={asset.id}>
                       <strong>{asset.filename}</strong>
                       <span>{asset.family}</span>
+                      <span className={`source-intent-badge ${asset.sourceIntent}`}>
+                        {asset.sourceIntent === 'required' ? 'Must appear' : 'AI context'}
+                      </span>
                       <small>{asset.uploadState}</small>
                     </article>
                   ))}
@@ -1139,6 +1239,22 @@ export function WorkspaceShell({
           )}
         </div>
         <fieldset className="chat-composer" disabled={!isPageCapableNode(selectedNode)}>
+          <div className="segmented-control source-intent-control" aria-label="Input usage">
+            <button
+              aria-pressed={sourceIntent === 'context'}
+              type="button"
+              onClick={() => setSourceIntent('context')}
+            >
+              Analyze as context
+            </button>
+            <button
+              aria-pressed={sourceIntent === 'required'}
+              type="button"
+              onClick={() => setSourceIntent('required')}
+            >
+              Must appear
+            </button>
+          </div>
           <div className="segmented-control" aria-label="Input type">
             <button
               aria-pressed={inputType === 'instruction'}

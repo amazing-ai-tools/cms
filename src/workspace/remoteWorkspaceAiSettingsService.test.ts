@@ -10,6 +10,7 @@ describe('remote workspace AI settings service', () => {
             availableProviders: [],
             effort: 'high',
             hasApiKey: true,
+            languages: ['en', 'fr'],
             model: 'gpt-5.6-terra',
             provider: 'openai',
             workspaceId: 'workspace-1',
@@ -21,6 +22,7 @@ describe('remote workspace AI settings service', () => {
 
     await expect(service.loadSettings('workspace-1')).resolves.toMatchObject({
       hasApiKey: true,
+      languages: ['en', 'fr'],
       model: 'gpt-5.6-terra',
       provider: 'openai',
     });
@@ -47,6 +49,7 @@ describe('remote workspace AI settings service', () => {
     await service.saveSettings('workspace-1', {
       apiKey: 'sk-ant-test',
       effort: 'medium',
+      languages: ['en', 'fr'],
       model: 'claude-opus-4-6',
       provider: 'anthropic',
     });
@@ -57,6 +60,7 @@ describe('remote workspace AI settings service', () => {
         body: JSON.stringify({
           apiKey: 'sk-ant-test',
           effort: 'medium',
+          languages: ['en', 'fr'],
           model: 'claude-opus-4-6',
           provider: 'anthropic',
         }),

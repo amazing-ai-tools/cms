@@ -76,6 +76,63 @@ const draft: PageDraft = {
     textColor: '#18201c',
     spacing: 'balanced',
   },
+  language: 'en',
+  localizations: {
+    fr: {
+      title: 'Lancement Adhesion',
+      blocks: [
+        {
+          id: 'block-hero',
+          type: 'hero',
+          content: 'Lancez ladhesion editoriale avec une promesse claire.',
+          layout: {
+            column: 1,
+            row: 1,
+            width: 12,
+          },
+          visual: {
+            backgroundColor: '#f7fbf5',
+            textColor: '#17211b',
+            accentColor: '#2f7d5f',
+            size: 'large',
+          },
+        },
+        {
+          id: 'block-proof',
+          type: 'text',
+          content: 'Ajoutez des preuves de workflow pour les equipes de contenu.',
+          layout: {
+            column: 1,
+            row: 2,
+            width: 7,
+          },
+          visual: {
+            backgroundColor: '#ffffff',
+            textColor: '#2c332f',
+            accentColor: '#d66b3d',
+            size: 'standard',
+          },
+        },
+        {
+          id: 'block-asset-1',
+          type: 'media',
+          assetId: 'asset-1',
+          content: 'hero.jpg',
+          layout: {
+            column: 8,
+            row: 2,
+            width: 5,
+          },
+          visual: {
+            backgroundColor: '#eef3f1',
+            textColor: '#27302b',
+            accentColor: '#2f7d5f',
+            size: 'compact',
+          },
+        },
+      ],
+    },
+  },
   createdAt: '2026-07-23T00:00:00.000Z',
   updatedAt: '2026-07-23T00:00:00.000Z',
 };
@@ -90,6 +147,7 @@ const assets: PageAsset[] = [
     family: 'image',
     storageUrl: 'local://assets/page-1/asset-1/hero.jpg',
     cdnUrl: null,
+    sourceIntent: 'required',
     uploadState: 'uploaded',
     createdAt: '2026-07-23T00:00:00.000Z',
   },
@@ -119,5 +177,14 @@ describe('page draft preview', () => {
       'data-asset-family',
       'image',
     );
+  });
+
+  test('renders localized draft copy when a preview language is selected', () => {
+    render(<PageDraftPreview assets={assets} draft={draft} language="fr" />);
+
+    expect(screen.getByRole('heading', { name: /lancement adhesion/i })).toBeInTheDocument();
+    expect(screen.getByText(/promesse claire/i)).toBeInTheDocument();
+    expect(screen.queryByText(/concise promise/i)).not.toBeInTheDocument();
+    expect(screen.getByTestId('draft-preview')).toHaveAttribute('lang', 'fr');
   });
 });

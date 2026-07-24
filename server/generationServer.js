@@ -1,13 +1,14 @@
 import http from 'node:http';
 import { createAiGenerationService } from './aiGenerationService.js';
+import { createFileCdnPublishingService } from './cdnPublishingService.js';
 import { createFileWorkspaceAiSettingsStore } from './workspaceAiSettingsStore.js';
 
-const MAX_JSON_BODY_BYTES = 12 * 1024 * 1024;
+const MAX_JSON_BODY_BYTES = 50 * 1024 * 1024;
 
 function corsHeaders() {
   return {
     'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'GET,POST,PUT,OPTIONS',
+    'Access-Control-Allow-Methods': 'GET,HEAD,POST,PUT,OPTIONS',
     'Access-Control-Allow-Origin': process.env.CORS_ORIGIN || '*',
   };
 }
@@ -18,6 +19,15 @@ function sendJson(response, statusCode, body) {
     'Content-Type': 'application/json; charset=utf-8',
   });
   response.end(JSON.stringify(body));
+}
+
+function sendBuffer(response, statusCode, body, contentType) {
+  response.writeHead(statusCode, {
+    ...corsHeaders(),
+    'Cache-Control': 'public, max-age=31536000, immutable',
+    'Content-Type': contentType,
+  });
+  response.end(body);
 }
 
 async function readJsonBody(request) {
@@ -52,6 +62,7 @@ export function createGenerationServer(options = {}) {
     });
   const generationService =
     options.generationService ?? createAiGenerationService({ settingsStore });
+  const cdnPublishingService = options.cdnPublishingService ?? createFileCdnPublishingService();
 
   return http.createServer(async (request, response) => {
     if (request.method === 'OPTIONS') {
@@ -65,6 +76,21 @@ export function createGenerationServer(options = {}) {
     try {
       if (request.method === 'GET' && url.pathname === '/healthz') {
         sendJson(response, 200, { status: 'ok' });
+        return;
+      }
+
+      if ((request.method === 'GET' || request.method === 'HEAD') && url.pathname.startsWith('/cdn/')) {
+        const publishedFile = await cdnPublishingService.readFile(url.pathname);
+        if (request.method === 'HEAD') {
+          response.writeHead(200, {
+            ...corsHeaders(),
+            'Cache-Control': 'public, max-age=31536000, immutable',
+            'Content-Type': publishedFile.contentType,
+          });
+          response.end();
+          return;
+        }
+        sendBuffer(response, 200, publishedFile.body, publishedFile.contentType);
         return;
       }
 
@@ -84,6 +110,12 @@ export function createGenerationServer(options = {}) {
         const body = await readJsonBody(request);
         const result = await generationService.generateDraft(body);
         sendJson(response, result.job.status === 'failed' ? 503 : 200, result);
+        return;
+      }
+
+      if (request.method === 'POST' && url.pathname === '/api/cdn/publish-version') {
+        const body = await readJsonBody(request);
+        sendJson(response, 200, await cdnPublishingService.publishVersion(body.version));
         return;
       }
 

@@ -4,6 +4,23 @@ import type { PageAsset, PageDraft, PageDraftBlock } from './types';
 interface PageDraftPreviewProps {
   assets: PageAsset[];
   draft: PageDraft;
+  language?: string;
+}
+
+function localizedDraftContent(draft: PageDraft, language?: string) {
+  const requestedLanguage = language || draft.language || 'en';
+  const localization =
+    requestedLanguage && requestedLanguage !== (draft.language ?? 'en')
+      ? draft.localizations?.[requestedLanguage]
+      : null;
+
+  return {
+    blocks: localization?.blocks ?? draft.blocks,
+    layout: localization?.layout ?? draft.layout,
+    language: requestedLanguage,
+    title: localization?.title ?? draft.title,
+    visual: localization?.visual ?? draft.visual,
+  };
 }
 
 function blockStyle(block: PageDraftBlock): CSSProperties {
@@ -19,25 +36,27 @@ function classNameFor(block: PageDraftBlock) {
   return `draft-block ${block.type} ${block.visual.size}`;
 }
 
-export function PageDraftPreview({ assets, draft }: PageDraftPreviewProps) {
+export function PageDraftPreview({ assets, draft, language }: PageDraftPreviewProps) {
+  const localizedDraft = localizedDraftContent(draft, language);
   const assetsById = new Map(assets.map((asset) => [asset.id, asset]));
-  const blocksById = new Map(draft.blocks.map((block) => [block.id, block]));
+  const blocksById = new Map(localizedDraft.blocks.map((block) => [block.id, block]));
 
   return (
     <article
-      className={`draft-preview ${draft.visual.spacing}`}
+      className={`draft-preview ${localizedDraft.visual.spacing}`}
       data-testid="draft-preview"
+      lang={localizedDraft.language}
       style={{
-        backgroundColor: draft.visual.backgroundColor,
-        color: draft.visual.textColor,
-        maxWidth: `${draft.layout.canvas.maxWidth}px`,
+        backgroundColor: localizedDraft.visual.backgroundColor,
+        color: localizedDraft.visual.textColor,
+        maxWidth: `${localizedDraft.layout.canvas.maxWidth}px`,
       }}
     >
       <header className="draft-preview-header">
-        <span style={{ color: draft.visual.accentColor }}>Draft proposal</span>
-        <h3>{draft.title}</h3>
+        <span style={{ color: localizedDraft.visual.accentColor }}>Draft proposal</span>
+        <h3>{localizedDraft.title}</h3>
       </header>
-      {draft.layout.sections.map((section) => (
+      {localizedDraft.layout.sections.map((section) => (
         <section className="draft-preview-section" key={section.id}>
           {section.title ? <h4>{section.title}</h4> : null}
           <div className="draft-preview-grid">

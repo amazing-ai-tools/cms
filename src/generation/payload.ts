@@ -8,9 +8,11 @@ export interface GenerationPayload {
     mimeType: string;
     sourceContent?: string;
     sourceEncoding?: string;
+    sourceIntent?: string;
   }>;
   inputs: Array<{
     content: string;
+    sourceIntent?: string;
     type: string;
   }>;
   links: string[];
@@ -23,6 +25,7 @@ export function buildGenerationPayload(pageContext: PageContext): GenerationPayl
     inputs: pageContext.inputs.map((input) => ({
       type: input.type,
       content: input.content,
+      sourceIntent: input.sourceIntent,
     })),
     links: pageContext.inputs
       .filter((input) => input.type === 'link')
@@ -33,6 +36,7 @@ export function buildGenerationPayload(pageContext: PageContext): GenerationPayl
       mimeType: asset.mimeType,
       sourceContent: asset.sourceContent,
       sourceEncoding: asset.sourceEncoding,
+      sourceIntent: asset.sourceIntent,
       storageUrl: asset.storageUrl,
     })),
   };

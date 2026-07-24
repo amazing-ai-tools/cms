@@ -23,7 +23,7 @@ export const embeddedPageDraftSchema = {
     blocks: {
       type: 'array',
       minItems: 2,
-      maxItems: 8,
+      maxItems: 16,
       items: {
         type: 'object',
         additionalProperties: false,
@@ -58,6 +58,11 @@ export const embeddedPageDraftSchema = {
         },
       },
     },
+    language: {
+      type: 'string',
+      minLength: 2,
+      maxLength: 16,
+    },
     layout: {
       type: 'object',
       additionalProperties: false,
@@ -86,6 +91,59 @@ export const embeddedPageDraftSchema = {
                 type: 'array',
                 minItems: 1,
                 items: { type: 'string' },
+              },
+            },
+          },
+        },
+      },
+    },
+    localizations: {
+      type: 'object',
+      additionalProperties: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['title', 'blocks'],
+        properties: {
+          title: {
+            type: 'string',
+            minLength: 3,
+            maxLength: 96,
+          },
+          blocks: {
+            type: 'array',
+            minItems: 1,
+            maxItems: 16,
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              required: ['id', 'type', 'content', 'layout', 'visual'],
+              properties: {
+                id: { type: 'string', minLength: 3, maxLength: 64 },
+                type: { type: 'string', enum: ['hero', 'text', 'media'] },
+                content: { type: 'string', minLength: 3, maxLength: 1200 },
+                assetId: { type: 'string', maxLength: 128 },
+                layout: {
+                  type: 'object',
+                  additionalProperties: false,
+                  required: ['column', 'row', 'width'],
+                  properties: {
+                    column: { type: 'integer', minimum: 1, maximum: 12 },
+                    row: { type: 'integer', minimum: 1, maximum: 12 },
+                    width: { type: 'integer', minimum: 1, maximum: 12 },
+                    height: { type: 'integer', minimum: 1, maximum: 6 },
+                  },
+                },
+                visual: {
+                  type: 'object',
+                  additionalProperties: false,
+                  required: ['backgroundColor', 'textColor', 'size'],
+                  properties: {
+                    backgroundColor: { type: 'string', pattern: '^#[0-9a-fA-F]{6}$' },
+                    textColor: { type: 'string', pattern: '^#[0-9a-fA-F]{6}$' },
+                    accentColor: { type: 'string', pattern: '^#[0-9a-fA-F]{6}$' },
+                    size: { type: 'string', enum: ['compact', 'standard', 'large'] },
+                  },
+                },
               },
             },
           },
@@ -124,6 +182,15 @@ function validateBlock(block) {
   assert(['compact', 'standard', 'large'].includes(block.visual?.size), 'Content block size is not supported.');
 }
 
+function validateLocalization(localization, language) {
+  assert(localization?.title?.trim(), `Localization ${language} title is required.`);
+  assert(
+    Array.isArray(localization.blocks) && localization.blocks.length > 0,
+    `Localization ${language} must include content blocks.`,
+  );
+  localization.blocks.forEach(validateBlock);
+}
+
 export function normalizeAndValidateDraftResponse(responseDraft, request, now) {
   assert(responseDraft && typeof responseDraft === 'object', 'AI response must be a draft object.');
   const timestamp = now().toISOString();
@@ -135,6 +202,8 @@ export function normalizeAndValidateDraftResponse(responseDraft, request, now) {
     blocks: responseDraft.blocks ?? [],
     layout: responseDraft.layout,
     visual: responseDraft.visual,
+    language: String(responseDraft.language || request.ai?.languages?.[0] || 'en').trim(),
+    localizations: responseDraft.localizations ?? {},
     createdAt: timestamp,
     updatedAt: timestamp,
   };
@@ -149,6 +218,9 @@ export function normalizeAndValidateDraftResponse(responseDraft, request, now) {
   assertColor(draft.visual?.backgroundColor, 'Draft background color');
   assertColor(draft.visual?.textColor, 'Draft text color');
   assert(['tight', 'balanced', 'airy'].includes(draft.visual?.spacing), 'Draft spacing is not supported.');
+  for (const [language, localization] of Object.entries(draft.localizations ?? {})) {
+    validateLocalization(localization, language);
+  }
 
   return draft;
 }

@@ -23,6 +23,7 @@ describe('structured generation output', () => {
       filename: 'hero.jpg',
       mimeType: 'image/jpeg',
       size: 2048,
+      sourceIntent: 'required',
     });
 
     const pageContext = await pageContextService.loadPageContext('page-1');
@@ -86,6 +87,7 @@ describe('structured generation output', () => {
       filename: 'brief.pdf',
       mimeType: 'application/pdf',
       size: 2048,
+      sourceIntent: 'required',
     });
 
     const pageContext = await pageContextService.loadPageContext('page-1');

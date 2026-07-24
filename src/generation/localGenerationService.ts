@@ -93,25 +93,27 @@ function proposalBlocksFor(request: GenerationRequest): PageDraftBlock[] {
     });
   }
 
-  request.pageContext.assets.forEach((asset, assetIndex) => {
-    blocks.push({
-      id: `block-asset-${asset.id}`,
-      type: 'media',
-      assetId: asset.id,
-      content: asset.filename,
-      layout: {
-        column: assetIndex % 2 === 0 ? 9 : 1,
-        row: 3 + assetIndex + (linkInputs.length ? 1 : 0),
-        width: asset.family === 'image' ? 4 : 6,
-      },
-      visual: {
-        backgroundColor: '#eef3f1',
-        textColor: '#27302b',
-        accentColor: '#2f7d5f',
-        size: 'standard',
-      },
+  request.pageContext.assets
+    .filter((asset) => asset.sourceIntent === 'required')
+    .forEach((asset, assetIndex) => {
+      blocks.push({
+        id: `block-asset-${asset.id}`,
+        type: 'media',
+        assetId: asset.id,
+        content: asset.filename,
+        layout: {
+          column: assetIndex % 2 === 0 ? 9 : 1,
+          row: 3 + assetIndex + (linkInputs.length ? 1 : 0),
+          width: asset.family === 'image' ? 4 : 6,
+        },
+        visual: {
+          backgroundColor: '#eef3f1',
+          textColor: '#27302b',
+          accentColor: '#2f7d5f',
+          size: 'standard',
+        },
+      });
     });
-  });
 
   return blocks;
 }
@@ -145,6 +147,8 @@ export function createLocalGenerationService(
     async generateDraft(request: GenerationRequest): Promise<GenerationResult> {
       const timestamp = now().toISOString();
       const blocks = proposalBlocksFor(request);
+      const languages = request.ai?.languages?.length ? request.ai.languages : ['en'];
+      const [baseLanguage, ...localizedLanguages] = languages;
 
       const jobId = `job-${nextJobId}`;
       nextJobId += 1;
@@ -174,6 +178,19 @@ export function createLocalGenerationService(
             textColor: '#18201c',
             spacing: 'balanced',
           },
+          language: baseLanguage,
+          localizations: Object.fromEntries(
+            localizedLanguages.map((language) => [
+              language,
+              {
+                title: `${proposalTitleFor(request)} (${language})`,
+                blocks: blocks.map((block) => ({
+                  ...block,
+                  content: block.type === 'media' ? block.content : `${block.content} (${language})`,
+                })),
+              },
+            ]),
+          ),
           createdAt: request.pageContext.draft?.createdAt ?? timestamp,
           updatedAt: timestamp,
         },

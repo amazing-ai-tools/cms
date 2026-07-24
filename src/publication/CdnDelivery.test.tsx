@@ -120,6 +120,121 @@ describe('CDN delivery integration', () => {
     });
   });
 
+  test('published embed content renders image, audio, video, and download assets from CDN URLs', async () => {
+    const cdnService = createLocalCdnService({ storageKey: 'cdn-delivery-rich-media' });
+    const pageContextService = createLocalPageContextService({
+      cdnService,
+      storageKey: 'cdn-delivery-rich-media-page',
+    });
+    const assets = [
+      { filename: 'hero.png', mimeType: 'image/png', sourceContent: 'data:image/png;base64,aGVybw==' },
+      { filename: 'intro.mp3', mimeType: 'audio/mpeg', sourceContent: 'data:audio/mpeg;base64,YXVkaW8=' },
+      { filename: 'tour.mp4', mimeType: 'video/mp4', sourceContent: 'data:video/mp4;base64,dmlkZW8=' },
+      { filename: 'terms.pdf', mimeType: 'application/pdf', sourceContent: 'data:application/pdf;base64,cGRm' },
+    ];
+
+    for (const asset of assets) {
+      await pageContextService.addAsset({
+        pageId: 'page-rich-media',
+        filename: asset.filename,
+        mimeType: asset.mimeType,
+        size: asset.sourceContent.length,
+        sourceContent: asset.sourceContent,
+        sourceEncoding: 'data-url',
+        sourceIntent: 'required',
+      });
+    }
+
+    await pageContextService.saveDraft({
+      ...draftFor('page-rich-media'),
+      blocks: [
+        {
+          id: 'block-asset-1',
+          type: 'media',
+          assetId: 'asset-1',
+          content: 'hero.png',
+          layout: { column: 1, row: 1, width: 6 },
+          visual: {
+            backgroundColor: '#eef3f1',
+            textColor: '#27302b',
+            accentColor: '#2f7d5f',
+            size: 'standard',
+          },
+        },
+        {
+          id: 'block-asset-2',
+          type: 'media',
+          assetId: 'asset-2',
+          content: 'intro.mp3',
+          layout: { column: 7, row: 1, width: 6 },
+          visual: {
+            backgroundColor: '#eef3f1',
+            textColor: '#27302b',
+            accentColor: '#2f7d5f',
+            size: 'standard',
+          },
+        },
+        {
+          id: 'block-asset-3',
+          type: 'media',
+          assetId: 'asset-3',
+          content: 'tour.mp4',
+          layout: { column: 1, row: 2, width: 6 },
+          visual: {
+            backgroundColor: '#eef3f1',
+            textColor: '#27302b',
+            accentColor: '#2f7d5f',
+            size: 'standard',
+          },
+        },
+        {
+          id: 'block-asset-4',
+          type: 'media',
+          assetId: 'asset-4',
+          content: 'terms.pdf',
+          layout: { column: 7, row: 2, width: 6 },
+          visual: {
+            backgroundColor: '#eef3f1',
+            textColor: '#27302b',
+            accentColor: '#2f7d5f',
+            size: 'standard',
+          },
+        },
+      ],
+      layout: {
+        canvas: { maxWidth: 1120 },
+        sections: [
+          {
+            id: 'section-assets',
+            blockIds: ['block-asset-1', 'block-asset-2', 'block-asset-3', 'block-asset-4'],
+          },
+        ],
+      },
+    });
+
+    const version = await pageContextService.publishDraft({
+      createdBy: user.id,
+      pageId: 'page-rich-media',
+    });
+    const content = await cdnService.readJson(version.cdnUrls.content);
+
+    expect(version.cdnUrls.media).toEqual([
+      'https://cdn.local/assisted-cms/pages/page-rich-media/assets/asset-1/hero.png',
+      'https://cdn.local/assisted-cms/pages/page-rich-media/assets/asset-2/intro.mp3',
+      'https://cdn.local/assisted-cms/pages/page-rich-media/assets/asset-3/tour.mp4',
+      'https://cdn.local/assisted-cms/pages/page-rich-media/assets/asset-4/terms.pdf',
+    ]);
+    expect(content).toMatchObject({
+      mediaAssets: version.assetManifest.map((asset) =>
+        expect.objectContaining({
+          assetId: asset.assetId,
+          cdnUrl: asset.cdnUrl,
+          filename: asset.filename,
+        }),
+      ),
+    });
+  });
+
   test('CMS shows publication failure from the CDN adapter and preserves the draft', async () => {
     const cdnService = createLocalCdnService({
       failPublish: true,

@@ -58,6 +58,30 @@ function draftFor(pageId: string): PageDraft {
       textColor: '#18201c',
       spacing: 'balanced',
     },
+    language: 'en',
+    localizations: {
+      fr: {
+        title: 'Apercu partenaire',
+        blocks: [
+          {
+            id: 'block-hero',
+            type: 'hero',
+            content: 'Experience partenaire localisee depuis le brief.',
+            layout: {
+              column: 1,
+              row: 1,
+              width: 12,
+            },
+            visual: {
+              backgroundColor: '#f7fbf5',
+              textColor: '#17211b',
+              accentColor: '#2f7d5f',
+              size: 'large',
+            },
+          },
+        ],
+      },
+    },
     createdAt: '2026-07-23T00:00:00.000Z',
     updatedAt: '2026-07-23T00:00:00.000Z',
   };
@@ -92,6 +116,26 @@ describe('authenticated draft preview route', () => {
     expect(screen.queryByRole('region', { name: /content hierarchy/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: /page inputs/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /publish draft/i })).not.toBeInTheDocument();
+  });
+
+  test('lets signed-in users switch draft preview language from the standalone preview page', async () => {
+    navigateTo('/preview/page-1');
+    const authService = createLocalAuthService({
+      initialUser: user,
+      storageKey: 'preview-route-language-auth',
+    });
+    const pageContextService = createLocalPageContextService({
+      storageKey: 'preview-route-language-context',
+    });
+    await pageContextService.saveDraft(draftFor('page-1'));
+
+    render(<App authService={authService} pageContextService={pageContextService} />);
+
+    await userEvent.selectOptions(await screen.findByLabelText(/preview language/i), 'fr');
+
+    expect(screen.getByRole('heading', { name: /apercu partenaire/i })).toBeInTheDocument();
+    expect(screen.getByText(/experience partenaire localisee/i)).toBeInTheDocument();
+    expect(screen.getByTestId('draft-preview')).toHaveAttribute('lang', 'fr');
   });
 
   test('requires Google sign-in before showing a draft preview', async () => {
@@ -156,6 +200,6 @@ describe('authenticated draft preview route', () => {
 
     await userEvent.click(within(previewPanel).getByRole('button', { name: /open draft preview/i }));
 
-    expect(openSpy).toHaveBeenCalledWith(`/preview/${page.id}`, '_blank', 'noopener,noreferrer');
+    expect(openSpy).toHaveBeenCalledWith(`/preview/${page.id}?lang=en`, '_blank', 'noopener,noreferrer');
   });
 });

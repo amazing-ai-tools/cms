@@ -1,5 +1,6 @@
 import type { CdnPublicationResult, CdnService } from './cdn';
 import type { PublishedVersion } from '../page/types';
+import { buildPublishableManifest } from './manifest';
 
 interface LocalCdnServiceOptions {
   baseUrl?: string;
@@ -54,9 +55,22 @@ export function createLocalCdnService(options: LocalCdnServiceOptions = {}): Cdn
       const mediaUrls = version.assetManifest.map((asset) =>
         assetUrl(baseUrl, version, asset.assetId, asset.filename),
       );
+      const publicVersion = {
+        ...version,
+        assetManifest: version.assetManifest.map((asset, assetIndex) => ({
+          ...asset,
+          cdnUrl: mediaUrls[assetIndex] ?? asset.cdnUrl,
+        })),
+        cdnUrls: {
+          content: contentUrl,
+          media: mediaUrls,
+          script: scriptUrl,
+        },
+      };
+      const manifest = buildPublishableManifest(publicVersion);
 
       storage.records[contentUrl] = {
-        content: JSON.stringify(version.manifest.content),
+        content: JSON.stringify(manifest.content),
         contentType: 'application/json',
       };
       storage.records[scriptUrl] = {
@@ -65,7 +79,7 @@ export function createLocalCdnService(options: LocalCdnServiceOptions = {}): Cdn
       };
       version.assetManifest.forEach((asset, index) => {
         storage.records[mediaUrls[index]] = {
-          content: asset.storageUrl,
+          content: asset.sourceContent ?? asset.storageUrl,
           contentType: asset.mimeType,
         };
       });

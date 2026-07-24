@@ -85,6 +85,7 @@ function aiSettingsServiceFor(
   overrides: Partial<{
     effort: string;
     hasApiKey: boolean;
+    languages: string[];
     model: string;
     provider: string;
   }> = {},
@@ -122,6 +123,7 @@ function aiSettingsServiceFor(
       ],
       effort: 'medium',
       hasApiKey: true,
+      languages: ['en', 'fr'],
       model: 'grok-4.5',
       provider: 'xai',
       workspaceId: 'workspace-google-generation-user',
@@ -202,10 +204,11 @@ describe('generate action and generation visibility', () => {
 
     expect(generationService.generateDraft).toHaveBeenCalledWith(
       expect.objectContaining({
-        ai: {
+        ai: expect.objectContaining({
+          languages: ['en', 'fr'],
           model: 'grok-4.5',
           provider: 'xai',
-        },
+        }),
         hierarchyPath: ['Category 1', 'Page 1'],
         pageId: page.id,
         pageTitle: 'Page 1',
@@ -307,6 +310,7 @@ describe('generate action and generation visibility', () => {
       {
         apiKey: 'sk-ant-test',
         effort: 'medium',
+        languages: ['en', 'fr'],
         model: 'claude-opus-4-6',
         provider: 'anthropic',
       },

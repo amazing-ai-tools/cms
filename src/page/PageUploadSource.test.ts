@@ -25,6 +25,22 @@ describe('upload source preservation', () => {
     expect(source.sourceContent).toMatch(/^data:application\/pdf;base64,/);
   });
 
+  test('keeps image, audio, video, and binary document bytes as data URLs for CDN publication', async () => {
+    for (const file of [
+      new File(['image'], 'hero.png', { type: 'image/png' }),
+      new File(['audio'], 'intro.mp3', { type: 'audio/mpeg' }),
+      new File(['video'], 'tour.mp4', { type: 'video/mp4' }),
+      new File(['word'], 'offer.docx', {
+        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      }),
+    ]) {
+      const source = await readUploadSourceForFile(file);
+
+      expect(source.sourceEncoding).toBe('data-url');
+      expect(source.sourceContent).toMatch(/^data:/);
+    }
+  });
+
   test('stores upload source metadata with page assets', async () => {
     const pageContextService = createLocalPageContextService({
       storageKey: 'upload-source-context',

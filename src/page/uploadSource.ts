@@ -15,8 +15,28 @@ const TEXT_MIME_TYPES = new Set([
   'text/xml',
 ]);
 
+const BINARY_DOCUMENT_MIME_TYPES = new Set([
+  'application/msword',
+  'application/octet-stream',
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+]);
+
 function isPdf(file: File) {
   return file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+}
+
+function isPublishableBinary(file: File) {
+  const lowerFilename = file.name.toLowerCase();
+  return (
+    file.type.startsWith('image/') ||
+    file.type.startsWith('audio/') ||
+    file.type.startsWith('video/') ||
+    BINARY_DOCUMENT_MIME_TYPES.has(file.type) ||
+    lowerFilename.endsWith('.doc') ||
+    lowerFilename.endsWith('.docx') ||
+    lowerFilename.endsWith('.pdf')
+  );
 }
 
 function isTextLike(file: File) {
@@ -52,7 +72,7 @@ export async function readUploadSourceForFile(file: File): Promise<UploadSource>
     };
   }
 
-  if (isPdf(file)) {
+  if (isPdf(file) || isPublishableBinary(file)) {
     return {
       sourceContent: await fileToDataUrl(file),
       sourceEncoding: 'data-url',

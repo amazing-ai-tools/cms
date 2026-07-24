@@ -56,6 +56,11 @@ function previewNodeIdFrom(pathname: string) {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
+function previewLanguageFrom(search: string) {
+  const language = new URLSearchParams(search).get('lang');
+  return language?.trim() || 'en';
+}
+
 function GoogleSignInGate({
   error,
   onGoogleSignIn,
@@ -108,6 +113,9 @@ function AuthenticatedDraftPreviewRoute({
     context: null,
     error: '',
   });
+  const [previewLanguage, setPreviewLanguage] = React.useState(() =>
+    previewLanguageFrom(window.location.search),
+  );
 
   React.useEffect(() => {
     let isMounted = true;
@@ -229,9 +237,37 @@ function AuthenticatedDraftPreviewRoute({
     );
   }
 
+  const languageOptions = Array.from(
+    new Set([
+      previewState.context.draft.language ?? 'en',
+      ...Object.keys(previewState.context.draft.localizations ?? {}),
+    ]),
+  );
+  const selectedPreviewLanguage = languageOptions.includes(previewLanguage)
+    ? previewLanguage
+    : languageOptions[0] ?? 'en';
+
   return (
     <main className="standalone-preview-shell" data-page-id={pageId}>
-      <PageDraftPreview assets={previewState.context.assets} draft={previewState.context.draft} />
+      <label className="standalone-preview-language" htmlFor="standalone-preview-language">
+        Preview language
+        <select
+          id="standalone-preview-language"
+          value={selectedPreviewLanguage}
+          onChange={(event) => setPreviewLanguage(event.target.value)}
+        >
+          {languageOptions.map((language) => (
+            <option key={language} value={language}>
+              {language}
+            </option>
+          ))}
+        </select>
+      </label>
+      <PageDraftPreview
+        assets={previewState.context.assets}
+        draft={previewState.context.draft}
+        language={selectedPreviewLanguage}
+      />
     </main>
   );
 }

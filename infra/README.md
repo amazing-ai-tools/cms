@@ -38,3 +38,14 @@ the subscription scope so the workflow can create or update the resource group,
 storage account, static website settings, and upload using storage account keys.
 
 The storage static website endpoint can be used as an origin for Azure Front Door.
+
+## VPS Runtime CDN
+
+The AI/API service also publishes customer page assets at runtime:
+
+- `infra/cms-ai-api.service` sets `CDN_ROOT_DIR=/var/lib/cms/cdn`
+- `infra/cms.caddy` serves `/cdn/*` from that directory before proxying API routes
+- `PUBLIC_CDN_BASE_URL` controls the URLs embedded in published snippets
+
+This runtime CDN path is used for generated page JSON, the embed renderer script, and uploaded
+images, audio, video, PDFs, and downloadable documents.

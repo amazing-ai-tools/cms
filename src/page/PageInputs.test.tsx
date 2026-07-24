@@ -37,7 +37,7 @@ async function renderWorkspaceWithPages() {
     type: 'category',
     title: 'Category 1',
   });
-  await contentService.createNode({
+  const pageOne = await contentService.createNode({
     workspaceId: workspace.workspace.id,
     parentId: category.id,
     type: 'page',
@@ -60,6 +60,8 @@ async function renderWorkspaceWithPages() {
   );
 
   await screen.findByRole('button', { name: /page 1 page/i });
+
+  return { pageContextService, pageOne };
 }
 
 describe('right-side page input panel', () => {
@@ -113,6 +115,41 @@ describe('right-side page input panel', () => {
     expect(entries[1]).toHaveTextContent('https://example.com/source');
     expect(await within(inputsPanel).findByText('brief.pdf')).toBeInTheDocument();
     expect(within(inputsPanel).getByText(/^pdf$/i)).toBeInTheDocument();
+  });
+
+  test('marks page inputs and uploads as AI context or required page content', async () => {
+    const { pageContextService, pageOne } = await renderWorkspaceWithPages();
+
+    await userEvent.click(screen.getByRole('button', { name: /page 1 page/i }));
+    const inputsPanel = screen.getByRole('region', { name: /page inputs/i });
+    const logo = new File(['logo'], 'client-logo.png', { type: 'image/png' });
+
+    expect(
+      within(inputsPanel).getByRole('button', { name: /analyze as context/i }),
+    ).toHaveAttribute('aria-pressed', 'true');
+
+    await userEvent.click(within(inputsPanel).getByRole('button', { name: /must appear/i }));
+    await userEvent.type(
+      within(inputsPanel).getByLabelText(/message the page ai/i),
+      'Use this exact guarantee: setup in 48 hours.',
+    );
+    await userEvent.upload(within(inputsPanel).getByLabelText(/attach materials/i), logo);
+    await userEvent.click(within(inputsPanel).getByRole('button', { name: /send/i }));
+
+    const context = await pageContextService.loadPageContext(pageOne.id);
+    expect(context.inputs[0]).toMatchObject({
+      content: 'Use this exact guarantee: setup in 48 hours.',
+      sourceIntent: 'required',
+    });
+    expect(context.assets[0]).toMatchObject({
+      filename: 'client-logo.png',
+      sourceIntent: 'required',
+    });
+
+    const inputFeed = await within(inputsPanel).findByLabelText(/saved inputs for page 1/i);
+    expect(within(inputFeed).getByText(/must appear/i)).toBeInTheDocument();
+    const assetList = await within(inputsPanel).findByLabelText(/uploaded materials for page 1/i);
+    expect(within(assetList).getByText(/must appear/i)).toBeInTheDocument();
   });
 
   test('does not mix inputs between selected pages', async () => {

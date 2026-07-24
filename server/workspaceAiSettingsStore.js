@@ -5,6 +5,7 @@ import {
   defaultModelFor,
   defaultProviderSettings,
   normalizeEffort,
+  normalizeLanguages,
   normalizeProviderId,
 } from './providerCatalog.js';
 
@@ -24,11 +25,13 @@ function publicSettingsFromRecord(record) {
   const providerSettings = record.providers[provider] ?? {};
   const model = record.selected.model || providerSettings.model || defaultModelFor(provider);
   const effort = normalizeEffort(provider, model, record.selected.effort ?? providerSettings.effort);
+  const languages = normalizeLanguages(record.selected.languages ?? providerSettings.languages);
 
   return {
     availableProviders: DEFAULT_AI_PROVIDERS,
     ...(effort ? { effort } : {}),
     hasApiKey: Boolean(providerSettings.apiKey),
+    languages,
     model,
     provider,
     workspaceId: record.workspaceId,
@@ -40,10 +43,12 @@ function privateProviderSettingsFromRecord(record, requestedProvider) {
   const providerSettings = record.providers[provider] ?? {};
   const model = providerSettings.model || defaultModelFor(provider);
   const effort = normalizeEffort(provider, model, providerSettings.effort);
+  const languages = normalizeLanguages(providerSettings.languages);
 
   return {
     apiKey: providerSettings.apiKey || '',
     ...(effort ? { effort } : {}),
+    languages,
     model,
     provider,
   };
@@ -53,11 +58,13 @@ function normalizeSaveInput(input) {
   const provider = normalizeProviderId(input?.provider);
   const model = String(input?.model || defaultModelFor(provider)).trim() || defaultModelFor(provider);
   const effort = normalizeEffort(provider, model, input?.effort);
+  const languages = normalizeLanguages(input?.languages);
   const apiKey = typeof input?.apiKey === 'string' ? input.apiKey.trim() : undefined;
 
   return {
     ...(apiKey ? { apiKey } : {}),
     ...(effort ? { effort } : {}),
+    languages,
     model,
     provider,
   };
@@ -96,6 +103,7 @@ export function createMemoryWorkspaceAiSettingsStore(options = {}) {
         },
         selected: {
           effort: normalizedInput.effort,
+          languages: normalizedInput.languages,
           model: normalizedInput.model,
           provider: normalizedInput.provider,
         },
@@ -145,6 +153,7 @@ export function createFileWorkspaceAiSettingsStore(options = {}) {
         }
         await memoryStore.saveSettings(workspaceId, {
           effort: normalizedRecord.selected?.effort,
+          languages: normalizedRecord.selected?.languages,
           model: normalizedRecord.selected?.model,
           provider: normalizedRecord.selected?.provider,
         });
@@ -182,6 +191,7 @@ export function createFileWorkspaceAiSettingsStore(options = {}) {
       },
       selected: {
         effort: normalizedInput.effort,
+        languages: normalizedInput.languages,
         model: normalizedInput.model,
         provider: normalizedInput.provider,
       },

@@ -52,10 +52,16 @@ The Generate button uses a Node API deployed on the VPS:
 - `GET /api/workspaces/:workspaceId/ai-settings`
 - `PUT /api/workspaces/:workspaceId/ai-settings`
 - `POST /api/generation/draft`
+- `POST /api/cdn/publish-version`
+- `GET /cdn/*`
 
 Provider API keys are saved per workspace through the settings endpoint and stored only on the
 server at `AI_WORKSPACE_SETTINGS_FILE`. The browser receives `hasApiKey`, provider, model, and
-effort metadata, never the key value.
+effort/language metadata, never the key value.
 
 Supported providers are `xai`, `openai`, and `anthropic`. The frontend sends reasoning effort only
 for provider/model combinations that advertise support.
+
+Published page JSON, renderer JavaScript, and uploaded media assets are written to `CDN_ROOT_DIR`
+and exposed through `PUBLIC_CDN_BASE_URL`, defaulting to
+`https://cms.api.amazing-ai.tools/cdn`.

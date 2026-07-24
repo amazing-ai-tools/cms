@@ -13,6 +13,7 @@ export interface GenerationJob {
 export interface GenerationRequest {
   ai?: {
     effort?: string;
+    languages?: string[];
     model: string;
     provider: string;
   };

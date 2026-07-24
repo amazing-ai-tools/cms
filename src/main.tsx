@@ -5,6 +5,7 @@ import { createGoogleAuthService } from './auth/googleAuthService';
 import { createLocalContentService } from './content/localContentService';
 import { createRemoteGenerationService } from './generation/remoteGenerationService';
 import { createLocalPageContextService } from './page/localPageContextService';
+import { createRemoteCdnService } from './publication/remoteCdnService';
 import { createLocalWorkspaceService } from './workspace/localWorkspaceService';
 import { createRemoteWorkspaceAiSettingsService } from './workspace/remoteWorkspaceAiSettingsService';
 import './styles.css';
@@ -47,7 +48,12 @@ const workspaceService = createLocalWorkspaceService({
 const contentService = createLocalContentService({
   storageKey: `assisted-cms.content.${googleClientId || googleCallbackUrl}`,
 });
-const pageContextService = createLocalPageContextService();
+const remoteCdnService = workspaceAiSettingsApiBaseUrl
+  ? createRemoteCdnService({ baseUrl: workspaceAiSettingsApiBaseUrl })
+  : undefined;
+const pageContextService = createLocalPageContextService({
+  ...(remoteCdnService ? { cdnService: remoteCdnService } : {}),
+});
 const generationService = createRemoteGenerationService({
   endpoint: generationApiUrl,
 });

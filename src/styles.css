@@ -49,6 +49,7 @@ body {
 .standalone-preview-shell {
   min-height: 100vh;
   display: flex;
+  flex-direction: column;
   align-items: flex-start;
   justify-content: center;
   padding: clamp(18px, 4vw, 52px);
@@ -67,6 +68,29 @@ body {
   margin-top: 0;
   border: 0;
   box-shadow: 0 26px 90px rgba(38, 45, 58, 0.16);
+}
+
+.standalone-preview-language,
+.preview-language-selector {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  color: #394052;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.standalone-preview-language select,
+.preview-language-selector select {
+  min-height: 34px;
+  border: 1px solid #c8d4c8;
+  border-radius: 8px;
+  padding: 0 10px;
+  color: #1f2430;
+  background: #fffdf8;
+  font: inherit;
 }
 
 .standalone-preview-shell .preview-empty {
@@ -301,6 +325,42 @@ p {
 
 .workspace-ai-settings-form {
   margin-top: 18px;
+}
+
+.workspace-language-settings {
+  display: grid;
+  gap: 8px;
+  margin: 2px 0;
+  padding: 10px;
+  border: 1px solid #c8d4c8;
+  border-radius: 8px;
+  background: #fffdf8;
+}
+
+.workspace-language-settings legend {
+  padding: 0 4px;
+  color: #394052;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.language-checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.language-checkbox-grid label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 28px;
+}
+
+.language-checkbox-grid input {
+  min-height: auto;
+  width: auto;
+  margin: 0;
 }
 
 .cms-grid {
@@ -858,12 +918,33 @@ p {
 }
 
 .input-entry small {
-  display: block;
+  display: inline-flex;
   margin-bottom: 4px;
   color: #516b58;
   font-size: 0.72rem;
   font-weight: 800;
   text-transform: uppercase;
+}
+
+.source-intent-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  margin-left: 6px;
+  border: 1px solid #cfd8ce;
+  border-radius: 999px;
+  padding: 2px 7px;
+  color: #516b58;
+  background: #eef4ec;
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.source-intent-badge.required {
+  border-color: #e1bfae;
+  color: #89421f;
+  background: #fff2ea;
 }
 
 .asset-list {
@@ -874,7 +955,7 @@ p {
 
 .asset-entry {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 1fr auto auto auto;
   align-items: center;
   gap: 8px;
   padding: 10px;
@@ -907,6 +988,10 @@ p {
   border: 1px solid #d9ded6;
   border-radius: 8px;
   background: #f8faf6;
+}
+
+.source-intent-control {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .segmented-control button {

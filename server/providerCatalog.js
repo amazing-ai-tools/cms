@@ -51,9 +51,19 @@ export const DEFAULT_AI_PROVIDERS = [
 export function defaultProviderSettings() {
   return {
     effort: undefined,
+    languages: ['en'],
     model: 'grok-4.5',
     provider: 'xai',
   };
+}
+
+export function normalizeLanguages(languages) {
+  const selected = Array.isArray(languages)
+    ? languages.map((language) => String(language).trim()).filter(Boolean)
+    : [];
+  const unique = Array.from(new Set(selected));
+
+  return unique.length ? unique : ['en'];
 }
 
 export function normalizeProviderId(provider) {

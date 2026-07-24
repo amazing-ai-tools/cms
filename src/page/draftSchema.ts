@@ -1,4 +1,10 @@
-import type { PageDraft, PageDraftBlock, SavePageDraftInput } from './types';
+import type {
+  PageDraft,
+  PageDraftBlock,
+  PageDraftLayout,
+  PageDraftVisual,
+  SavePageDraftInput,
+} from './types';
 
 const HEX_COLOR_PATTERN = /^#[0-9a-f]{6}$/i;
 
@@ -39,33 +45,57 @@ function validateBlock(block: PageDraftBlock) {
   );
 }
 
-export function validatePageDraft(input: SavePageDraftInput | PageDraft) {
-  assert(input.pageId.trim(), 'Draft page id is required.');
-  assert(input.title.trim(), 'Draft title is required.');
-  assert(input.blocks.length > 0, 'Draft must include at least one content block.');
-  assert(input.layout.canvas.maxWidth >= 320, 'Draft canvas width must be at least 320.');
-  assert(input.layout.sections.length > 0, 'Draft must include at least one layout section.');
+function validateLayout(layout: PageDraftLayout, blockIds: Set<string>) {
+  assert(layout.canvas.maxWidth >= 320, 'Draft canvas width must be at least 320.');
+  assert(layout.sections.length > 0, 'Draft must include at least one layout section.');
 
-  const blockIds = new Set<string>();
-  input.blocks.forEach((block) => {
-    validateBlock(block);
-    assert(!blockIds.has(block.id), `Content block id ${block.id} is duplicated.`);
-    blockIds.add(block.id);
-  });
-
-  input.layout.sections.forEach((section) => {
+  layout.sections.forEach((section) => {
     assert(section.id.trim(), 'Each layout section must have an id.');
     assert(section.blockIds.length > 0, 'Each layout section must reference content blocks.');
     section.blockIds.forEach((blockId) => {
       assert(blockIds.has(blockId), `Layout section references unknown block ${blockId}.`);
     });
   });
+}
 
-  assertColor(input.visual.accentColor, 'Draft accent color');
-  assertColor(input.visual.backgroundColor, 'Draft background color');
-  assertColor(input.visual.textColor, 'Draft text color');
+function validateVisual(visual: PageDraftVisual, prefix = 'Draft') {
+  assertColor(visual.accentColor, `${prefix} accent color`);
+  assertColor(visual.backgroundColor, `${prefix} background color`);
+  assertColor(visual.textColor, `${prefix} text color`);
   assert(
-    ['tight', 'balanced', 'airy'].includes(input.visual.spacing),
-    'Draft spacing is not supported.',
+    ['tight', 'balanced', 'airy'].includes(visual.spacing),
+    `${prefix} spacing is not supported.`,
   );
+}
+
+function validateBlocks(blocks: PageDraftBlock[]) {
+  assert(blocks.length > 0, 'Draft must include at least one content block.');
+  const blockIds = new Set<string>();
+  blocks.forEach((block) => {
+    validateBlock(block);
+    assert(!blockIds.has(block.id), `Content block id ${block.id} is duplicated.`);
+    blockIds.add(block.id);
+  });
+
+  return blockIds;
+}
+
+export function validatePageDraft(input: SavePageDraftInput | PageDraft) {
+  assert(input.pageId.trim(), 'Draft page id is required.');
+  assert(input.title.trim(), 'Draft title is required.');
+  const blockIds = validateBlocks(input.blocks);
+  validateLayout(input.layout, blockIds);
+  validateVisual(input.visual);
+
+  Object.entries(input.localizations ?? {}).forEach(([language, localization]) => {
+    assert(language.trim(), 'Localization language is required.');
+    assert(localization.title.trim(), `Localization ${language} title is required.`);
+    const localizedBlockIds = validateBlocks(localization.blocks);
+    if (localization.layout) {
+      validateLayout(localization.layout, localizedBlockIds);
+    }
+    if (localization.visual) {
+      validateVisual(localization.visual, `Localization ${language}`);
+    }
+  });
 }

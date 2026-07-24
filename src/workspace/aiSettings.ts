@@ -14,6 +14,7 @@ export interface WorkspaceAiSettings {
   availableProviders: AiProviderOption[];
   effort?: string;
   hasApiKey: boolean;
+  languages: string[];
   model: string;
   provider: string;
   workspaceId: string;
@@ -22,6 +23,7 @@ export interface WorkspaceAiSettings {
 export interface SaveWorkspaceAiSettingsInput {
   apiKey?: string;
   effort?: string;
+  languages?: string[];
   model: string;
   provider: string;
 }
@@ -84,10 +86,29 @@ export const DEFAULT_AI_PROVIDERS: AiProviderOption[] = [
   },
 ];
 
+export const WORKSPACE_LANGUAGE_OPTIONS = [
+  { code: 'en', label: 'English' },
+  { code: 'fr', label: 'French' },
+  { code: 'pt-BR', label: 'Portuguese' },
+  { code: 'es', label: 'Spanish' },
+  { code: 'de', label: 'German' },
+  { code: 'it', label: 'Italian' },
+];
+
+export function normalizeWorkspaceLanguages(languages: unknown): string[] {
+  const selected = Array.isArray(languages)
+    ? languages.map((language) => String(language).trim()).filter(Boolean)
+    : [];
+  const unique = Array.from(new Set(selected));
+
+  return unique.length ? unique : ['en'];
+}
+
 export function defaultWorkspaceAiSettings(workspaceId: string): WorkspaceAiSettings {
   return {
     availableProviders: DEFAULT_AI_PROVIDERS,
     hasApiKey: false,
+    languages: ['en'],
     model: 'grok-4.5',
     provider: 'xai',
     workspaceId,

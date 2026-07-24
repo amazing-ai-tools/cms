@@ -12,6 +12,8 @@ Environment=NODE_ENV=production
 Environment=HOST=127.0.0.1
 Environment=PORT=8020
 Environment=AI_WORKSPACE_SETTINGS_FILE=/var/lib/cms/ai-workspace-settings.json
+Environment=CDN_ROOT_DIR=/var/lib/cms/cdn
+Environment=PUBLIC_CDN_BASE_URL=https://cms.api.amazing-ai.tools/cdn
 ExecStart=/usr/bin/node server/index.js
 Restart=always
 RestartSec=5

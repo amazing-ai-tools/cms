@@ -8,6 +8,7 @@ function requestFor(pageId = 'page-1') {
   return {
     ai: {
       effort: 'high',
+      languages: ['en', 'fr'],
       model: 'gpt-5.6-terra',
       provider: 'openai',
     },
@@ -22,6 +23,7 @@ function requestFor(pageId = 'page-1') {
           pageId,
           type: 'description',
           content: 'Create a refined embedded page for a content strategy service.',
+          sourceIntent: 'context',
           createdAt: '2026-07-23T10:00:00.000Z',
         },
       ],
@@ -89,6 +91,7 @@ describe('generation API server', () => {
       body: JSON.stringify({
         apiKey: 'sk-workspace-openai',
         effort: 'high',
+        languages: ['en', 'fr'],
         model: 'gpt-5.6-terra',
         provider: 'openai',
       }),
@@ -98,6 +101,7 @@ describe('generation API server', () => {
     await expect(saveResponse.json()).resolves.toMatchObject({
       effort: 'high',
       hasApiKey: true,
+      languages: ['en', 'fr'],
       model: 'gpt-5.6-terra',
       provider: 'openai',
       workspaceId: 'workspace-1',
@@ -109,6 +113,7 @@ describe('generation API server', () => {
     const getResponse = await fetch(`${baseUrl}/api/workspaces/workspace-1/ai-settings`);
     await expect(getResponse.json()).resolves.toMatchObject({
       hasApiKey: true,
+      languages: ['en', 'fr'],
       provider: 'openai',
     });
   });
@@ -184,7 +189,8 @@ describe('AI generation service', () => {
       }),
     );
     const [, init] = fetcher.mock.calls[0];
-    expect(JSON.parse(init.body)).toMatchObject({
+    const body = JSON.parse(init.body);
+    expect(body).toMatchObject({
       model: 'gpt-5.6-terra',
       reasoning: {
         effort: 'high',
@@ -196,6 +202,123 @@ describe('AI generation service', () => {
         }),
       },
     });
+    expect(JSON.stringify(body)).toContain('Target languages: en, fr');
+  });
+
+  test('requires selected languages and required assets in the generated draft', async () => {
+    const fetcher = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            output_text: JSON.stringify({
+              ...pageDraftResponse(),
+              language: 'en',
+              localizations: {
+                fr: {
+                  title: 'Page de service pilote',
+                  blocks: [
+                    {
+                      id: 'block-hero',
+                      type: 'hero',
+                      content: 'Une page integree moderne fondee sur le brief client.',
+                      layout: { column: 1, row: 1, width: 12 },
+                      visual: {
+                        backgroundColor: '#101820',
+                        textColor: '#f7fbff',
+                        accentColor: '#36c2a1',
+                        size: 'large',
+                      },
+                    },
+                    {
+                      id: 'block-proof',
+                      type: 'text',
+                      content: 'Le contenu source devient une narration commerciale precise.',
+                      layout: { column: 1, row: 2, width: 7 },
+                      visual: {
+                        backgroundColor: '#ffffff',
+                        textColor: '#17211b',
+                        accentColor: '#c96f3d',
+                        size: 'standard',
+                      },
+                    },
+                  ],
+                },
+              },
+            }),
+          }),
+          { status: 200 },
+        ),
+    );
+    const settingsStore = createMemoryWorkspaceAiSettingsStore();
+    await settingsStore.saveSettings('workspace-1', {
+      apiKey: 'test-openai-key',
+      effort: 'high',
+      languages: ['en', 'fr'],
+      model: 'gpt-5.6-terra',
+      provider: 'openai',
+    });
+    const service = createAiGenerationService({
+      fetcher,
+      now: () => new Date('2026-07-23T10:00:00.000Z'),
+      settingsStore,
+    });
+
+    const result = await service.generateDraft({
+      ...requestFor('page-required'),
+      pageContext: {
+        ...requestFor('page-required').pageContext,
+        assets: [
+          {
+            id: 'asset-logo',
+            pageId: 'page-required',
+            filename: 'client-logo.png',
+            family: 'image',
+            mimeType: 'image/png',
+            size: 128,
+            sourceIntent: 'required',
+            storageUrl: 'local://assets/page-required/asset-logo/client-logo.png',
+            cdnUrl: null,
+            uploadState: 'uploaded',
+            createdAt: '2026-07-23T10:00:00.000Z',
+          },
+        ],
+        inputs: [
+          {
+            id: 'input-required',
+            pageId: 'page-required',
+            type: 'instruction',
+            content: 'Use this exact guarantee: setup in 48 hours.',
+            sourceIntent: 'required',
+            createdAt: '2026-07-23T10:00:00.000Z',
+          },
+        ],
+      },
+    });
+
+    expect(result).toMatchObject({
+      draft: {
+        language: 'en',
+        localizations: {
+          fr: expect.objectContaining({
+            title: 'Page de service pilote',
+          }),
+        },
+      },
+      job: {
+        status: 'succeeded',
+      },
+    });
+    expect(result.draft.blocks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assetId: 'asset-logo',
+          type: 'media',
+        }),
+      ]),
+    );
+    const providerRequestBody = JSON.parse(fetcher.mock.calls[0][1].body);
+    expect(providerRequestBody.input[1].content).toContain('sourceIntent="required"');
+    expect(providerRequestBody.input[1].content).toContain('assetId="asset-logo"');
   });
 
   test.each([
@@ -304,6 +427,7 @@ function pageDraftResponse() {
         },
       },
     ],
+    language: 'en',
     layout: {
       canvas: { maxWidth: 1120 },
       sections: [
@@ -313,6 +437,37 @@ function pageDraftResponse() {
           blockIds: ['block-hero', 'block-proof'],
         },
       ],
+    },
+    localizations: {
+      fr: {
+        title: 'Page de service pilote',
+        blocks: [
+          {
+            id: 'block-hero',
+            type: 'hero',
+            content: 'Une page integree moderne fondee sur le brief client.',
+            layout: { column: 1, row: 1, width: 12 },
+            visual: {
+              backgroundColor: '#101820',
+              textColor: '#f7fbff',
+              accentColor: '#36c2a1',
+              size: 'large',
+            },
+          },
+          {
+            id: 'block-proof',
+            type: 'text',
+            content: 'Le contenu source devient une narration commerciale precise.',
+            layout: { column: 1, row: 2, width: 7 },
+            visual: {
+              backgroundColor: '#ffffff',
+              textColor: '#17211b',
+              accentColor: '#c96f3d',
+              size: 'standard',
+            },
+          },
+        ],
+      },
     },
     title: 'Reference-led service page',
     visual: {

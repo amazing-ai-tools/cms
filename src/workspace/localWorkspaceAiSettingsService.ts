@@ -1,5 +1,6 @@
 import {
   defaultWorkspaceAiSettings,
+  normalizeWorkspaceLanguages,
   type SaveWorkspaceAiSettingsInput,
   type WorkspaceAiSettings,
   type WorkspaceAiSettingsService,
@@ -49,6 +50,7 @@ export function createLocalWorkspaceAiSettingsService(
         ...current,
         effort: input.effort || undefined,
         hasApiKey: Boolean(input.apiKey) || current.hasApiKey,
+        languages: normalizeWorkspaceLanguages(input.languages ?? current.languages),
         model: input.model,
         provider: input.provider,
         workspaceId,

@@ -122,6 +122,7 @@ export async function collectSourceMaterial(request, options = {}) {
       appendWithinLimit(sources, {
         content: input.content,
         kind: input.type || 'input',
+        sourceIntent: input.sourceIntent || 'context',
         title: input.type || 'input',
       });
     }
@@ -132,6 +133,8 @@ export async function collectSourceMaterial(request, options = {}) {
     appendWithinLimit(sources, {
       content: content || `Reference URL provided: ${url}`,
       kind: 'link',
+      sourceIntent:
+        inputs.find((input) => input.type === 'link' && input.content === url)?.sourceIntent || 'context',
       title: url,
     });
   }
@@ -142,7 +145,10 @@ export async function collectSourceMaterial(request, options = {}) {
       content:
         content ||
         `Uploaded ${asset.family || 'asset'}: ${asset.filename || 'untitled'} (${asset.mimeType || 'unknown type'})`,
+      assetId: asset.id,
       kind: asset.family || 'asset',
+      mimeType: asset.mimeType || 'unknown type',
+      sourceIntent: asset.sourceIntent || 'context',
       title: asset.filename || 'uploaded asset',
     });
   }

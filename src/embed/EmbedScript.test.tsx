@@ -60,6 +60,30 @@ function draftFor(pageId: string, title: string): PageDraft {
       textColor: '#18201c',
       spacing: 'balanced',
     },
+    language: 'en',
+    localizations: {
+      fr: {
+        title: 'Page integree',
+        blocks: [
+          {
+            id: 'block-hero',
+            type: 'hero',
+            content: 'Experience de lancement partenaire issue du brief.',
+            layout: {
+              column: 1,
+              row: 1,
+              width: 12,
+            },
+            visual: {
+              backgroundColor: '#f7fbf5',
+              textColor: '#17211b',
+              accentColor: '#2f7d5f',
+              size: 'large',
+            },
+          },
+        ],
+      },
+    },
     createdAt: '2026-07-23T00:00:00.000Z',
     updatedAt: '2026-07-23T00:00:00.000Z',
   };
@@ -115,21 +139,112 @@ describe('external embed script', () => {
     const activeVersion = await pageContextService.getActivePublishedVersion(page.id);
     expect(activeVersion).not.toBeNull();
 
-    const snippet = buildEmbedSnippet(activeVersion!);
+    const snippet = buildEmbedSnippet(activeVersion!, 'fr');
 
     expect(snippet).toContain(`src="${activeVersion!.cdnUrls.script}"`);
     expect(snippet).toContain(`data-page-id="${page.id}"`);
+    expect(snippet).toContain('data-language="fr"');
     expect(snippet).toContain(`data-content-url="${activeVersion!.cdnUrls.content}"`);
 
     const target = document.createElement('div');
     await renderEmbedFromCdn({
       cdnService,
       contentUrl: activeVersion!.cdnUrls.content,
+      language: 'fr',
       target,
     });
 
-    expect(target).toHaveTextContent('Embedded page');
-    expect(target).toHaveTextContent('Embedded page external content');
+    expect(target).toHaveTextContent('Page integree');
+    expect(target).toHaveTextContent('Experience de lancement partenaire');
+  });
+
+  test('renders required media blocks as CDN-backed image, audio, video, and download elements', async () => {
+    const cdnService = createLocalCdnService({ storageKey: 'embed-runtime-media-cdn' });
+    const pageContextService = createLocalPageContextService({
+      cdnService,
+      storageKey: 'embed-runtime-media-page',
+    });
+    await pageContextService.addAsset({
+      pageId: 'page-media',
+      filename: 'hero.png',
+      mimeType: 'image/png',
+      size: 4,
+      sourceContent: 'data:image/png;base64,aGVybw==',
+      sourceEncoding: 'data-url',
+      sourceIntent: 'required',
+    });
+    await pageContextService.addAsset({
+      pageId: 'page-media',
+      filename: 'intro.mp3',
+      mimeType: 'audio/mpeg',
+      size: 5,
+      sourceContent: 'data:audio/mpeg;base64,YXVkaW8=',
+      sourceEncoding: 'data-url',
+      sourceIntent: 'required',
+    });
+    await pageContextService.addAsset({
+      pageId: 'page-media',
+      filename: 'tour.mp4',
+      mimeType: 'video/mp4',
+      size: 5,
+      sourceContent: 'data:video/mp4;base64,dmlkZW8=',
+      sourceEncoding: 'data-url',
+      sourceIntent: 'required',
+    });
+    await pageContextService.addAsset({
+      pageId: 'page-media',
+      filename: 'offer.pdf',
+      mimeType: 'application/pdf',
+      size: 3,
+      sourceContent: 'data:application/pdf;base64,cGRm',
+      sourceEncoding: 'data-url',
+      sourceIntent: 'required',
+    });
+    await pageContextService.saveDraft({
+      ...draftFor('page-media', 'Media embed page'),
+      blocks: ['asset-1', 'asset-2', 'asset-3', 'asset-4'].map((assetId, index) => ({
+        id: `block-${assetId}`,
+        type: 'media',
+        assetId,
+        content: ['hero.png', 'intro.mp3', 'tour.mp4', 'offer.pdf'][index],
+        layout: {
+          column: index % 2 === 0 ? 1 : 7,
+          row: Math.floor(index / 2) + 1,
+          width: 6,
+        },
+        visual: {
+          backgroundColor: '#f7fbf5',
+          textColor: '#17211b',
+          accentColor: '#2f7d5f',
+          size: 'standard',
+        },
+      })),
+      layout: {
+        canvas: { maxWidth: 1120 },
+        sections: [
+          {
+            id: 'section-media',
+            blockIds: ['block-asset-1', 'block-asset-2', 'block-asset-3', 'block-asset-4'],
+          },
+        ],
+      },
+    });
+    const version = await pageContextService.publishDraft({
+      createdBy: user.id,
+      pageId: 'page-media',
+    });
+
+    const target = document.createElement('div');
+    await renderEmbedFromCdn({
+      cdnService,
+      contentUrl: version.cdnUrls.content,
+      target,
+    });
+
+    expect(target.querySelector('img')?.getAttribute('src')).toBe(version.cdnUrls.media[0]);
+    expect(target.querySelector('audio')?.getAttribute('src')).toBe(version.cdnUrls.media[1]);
+    expect(target.querySelector('video')?.getAttribute('src')).toBe(version.cdnUrls.media[2]);
+    expect(target.querySelector('a[download]')?.getAttribute('href')).toBe(version.cdnUrls.media[3]);
   });
 
   test('CMS displays an embed script after publish and explains when publishing is required', async () => {

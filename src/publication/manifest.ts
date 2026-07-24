@@ -6,7 +6,14 @@ type ManifestSourceVersion = Omit<PublishedVersion, 'manifest'> & {
   manifest?: PublishedVersion['manifest'];
 };
 
+function publicAssetReference(asset: PublishedVersion['assetManifest'][number]) {
+  const { sourceContent: _sourceContent, sourceEncoding: _sourceEncoding, ...publicAsset } = asset;
+  return publicAsset;
+}
+
 export function buildPublishableManifest(version: ManifestSourceVersion): PublishableAssetManifest {
+  const mediaAssets = version.assetManifest.map(publicAssetReference);
+
   return {
     pageId: version.pageId,
     versionId: version.id,
@@ -17,8 +24,11 @@ export function buildPublishableManifest(version: ManifestSourceVersion): Publis
       blocks: version.contentSnapshot,
       layout: version.layoutSnapshot,
       visual: version.visualSnapshot,
+      language: version.language ?? 'en',
+      localizations: version.localizations ?? {},
+      mediaAssets,
     },
-    mediaAssets: version.assetManifest,
+    mediaAssets,
     cache: {
       immutable: true,
       scope: 'version',
