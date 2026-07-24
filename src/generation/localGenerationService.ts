@@ -115,6 +115,27 @@ function proposalBlocksFor(request: GenerationRequest): PageDraftBlock[] {
       });
     });
 
+  (request.childContent ?? []).forEach((child, childIndex) => {
+    const visibleTitle = child.title.trim() || 'child content';
+    blocks.push({
+      id: `block-child-${child.id}`,
+      type: 'text',
+      content: `Open ${visibleTitle}`,
+      href: child.href,
+      layout: {
+        column: childIndex % 2 === 0 ? 1 : 7,
+        row: 4 + childIndex + (linkInputs.length ? 1 : 0),
+        width: 6,
+      },
+      visual: {
+        backgroundColor: '#f4f8f5',
+        textColor: '#17211b',
+        accentColor: '#2f7d5f',
+        size: 'standard',
+      },
+    });
+  });
+
   return blocks;
 }
 

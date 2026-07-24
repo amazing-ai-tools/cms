@@ -15,6 +15,17 @@ export function buildGenerationPrompt(request, sources) {
     ? request.ai.languages
     : ['en'];
   const [baseLanguage, ...localizedLanguages] = languages;
+  const childContent = Array.isArray(request.childContent) ? request.childContent : [];
+  const childContentBlock = childContent.length
+    ? childContent
+        .map(
+          (child, index) =>
+            `${index + 1}. ${child.title} (${child.type}) slug="${child.slug || ''}" href="${
+              child.href
+            }"`,
+        )
+        .join('\n')
+    : 'No direct child content exists for this selected page/category.';
 
   const system = [
     'You are the senior AI designer and editorial strategist inside an assisted CMS.',
@@ -24,6 +35,7 @@ export function buildGenerationPrompt(request, sources) {
     'The source language does not control the output language. Always generate the requested target languages.',
     'Sources marked sourceIntent="required" must appear visibly in the page. Required uploaded assets must be referenced with media blocks using the exact assetId.',
     'Sources marked sourceIntent="context" are analysis/reference material. Use them to infer the page, but do not force them into the visible page unless editorially useful.',
+    'If child content is provided, the generated parent/category page must visibly link to every child item using the exact href. Use text blocks with href for child navigation, project cards, collections, indexes, or carousels.',
     'Return only JSON matching the provided schema. Do not include markdown or commentary.',
   ].join('\n');
 
@@ -45,7 +57,11 @@ export function buildGenerationPrompt(request, sources) {
     '- Use concise, polished copy suitable for publication.',
     '- Use only media blocks when a matching uploaded asset exists; otherwise use hero/text blocks.',
     '- Required media must use the uploaded assetId exactly; never invent asset ids.',
+    '- If child content exists, include each child as a visible block or card and set the block href to the exact child href.',
     '- Colors must be hex values and contrast clearly.',
+    '',
+    'Child content that must be linked:',
+    childContentBlock,
     '',
     'Source material to analyze:',
     sourceBlocks,

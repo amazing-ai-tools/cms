@@ -36,6 +36,10 @@ function classNameFor(block: PageDraftBlock) {
   return `draft-block ${block.type} ${block.visual.size}`;
 }
 
+function linkedContent(block: PageDraftBlock) {
+  return block.href ? <a href={block.href}>{block.content}</a> : block.content;
+}
+
 export function PageDraftPreview({ assets, draft, language }: PageDraftPreviewProps) {
   const localizedDraft = localizedDraftContent(draft, language);
   const assetsById = new Map(assets.map((asset) => [asset.id, asset]));
@@ -75,8 +79,8 @@ export function PageDraftPreview({ assets, draft, language }: PageDraftPreviewPr
                   key={block.id}
                   style={blockStyle(block)}
                 >
-                  {block.type === 'hero' ? <strong>{block.content}</strong> : null}
-                  {block.type === 'text' ? <p>{block.content}</p> : null}
+                  {block.type === 'hero' ? <strong>{linkedContent(block)}</strong> : null}
+                  {block.type === 'text' ? <p>{linkedContent(block)}</p> : null}
                   {block.type === 'media' ? (
                     <div className="draft-media-block">
                       <span>{asset?.filename ?? block.content}</span>

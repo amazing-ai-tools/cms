@@ -17,6 +17,13 @@ export interface GenerationRequest {
     model: string;
     provider: string;
   };
+  childContent?: Array<{
+    href: string;
+    id: string;
+    slug?: string;
+    title: string;
+    type: string;
+  }>;
   hierarchyPath: string[];
   pageContext: PageContext;
   pageId: string;

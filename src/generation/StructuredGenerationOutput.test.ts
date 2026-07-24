@@ -127,6 +127,42 @@ describe('structured generation output', () => {
     );
   });
 
+  test('local generation includes direct child content links in the draft', async () => {
+    const pageContextService = createLocalPageContextService({
+      storageKey: 'structured-generation-child-links-context',
+    });
+    const pageContext = await pageContextService.loadPageContext('page-parent');
+    const generationService = createLocalGenerationService({
+      now: () => new Date('2026-07-23T10:00:00.000Z'),
+    });
+
+    const result = await generationService.generateDraft({
+      childContent: [
+        {
+          href: '/services/launch/project-alpha',
+          id: 'node-project-alpha',
+          slug: 'project-alpha',
+          title: 'Project Alpha',
+          type: 'page',
+        },
+      ],
+      hierarchyPath: ['Services', 'Launch'],
+      pageContext,
+      pageId: 'page-parent',
+      pageTitle: 'Launch',
+    });
+
+    expect(result.draft?.blocks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          content: expect.stringContaining('Project Alpha'),
+          href: '/services/launch/project-alpha',
+          type: 'text',
+        }),
+      ]),
+    );
+  });
+
   test('page context service rejects invalid generated draft shapes before saving', async () => {
     const pageContextService = createLocalPageContextService({
       storageKey: 'structured-generation-invalid-context',

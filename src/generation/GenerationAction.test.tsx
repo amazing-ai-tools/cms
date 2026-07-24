@@ -168,6 +168,13 @@ async function renderWorkspaceWithPage(
     type: 'page',
     title: 'Page 1',
   });
+  await contentService.createNode({
+    workspaceId: workspace.workspace.id,
+    parentId: page.id,
+    type: 'page',
+    title: 'Project Alpha',
+    slug: 'project-alpha',
+  });
   await pageContextService.addInput({
     pageId: page.id,
     type: 'idea',
@@ -210,6 +217,15 @@ describe('generate action and generation visibility', () => {
           provider: 'xai',
         }),
         hierarchyPath: ['Category 1', 'Page 1'],
+        childContent: [
+          expect.objectContaining({
+            href: '/category-1/page-1/project-alpha',
+            id: 'node-3',
+            slug: 'project-alpha',
+            title: 'Project Alpha',
+            type: 'page',
+          }),
+        ],
         pageId: page.id,
         pageTitle: 'Page 1',
         workspaceId: 'workspace-google-generation-user',

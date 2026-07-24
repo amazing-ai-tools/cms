@@ -333,6 +333,85 @@ describe('AI generation service', () => {
     expect(providerRequestBody.input[1].content).toContain('assetId="asset-logo"');
   });
 
+  test('passes child content hierarchy to the provider and guarantees child links in the draft', async () => {
+    const fetcher = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            output_text: JSON.stringify(pageDraftResponse()),
+          }),
+          { status: 200 },
+        ),
+    );
+    const settingsStore = createMemoryWorkspaceAiSettingsStore();
+    await settingsStore.saveSettings('workspace-1', {
+      apiKey: 'test-openai-key',
+      effort: 'high',
+      languages: ['en', 'fr'],
+      model: 'gpt-5.6-terra',
+      provider: 'openai',
+    });
+    const service = createAiGenerationService({
+      fetcher,
+      now: () => new Date('2026-07-23T10:00:00.000Z'),
+      settingsStore,
+    });
+
+    const result = await service.generateDraft({
+      ...requestFor('page-parent'),
+      childContent: [
+        {
+          href: '/services/launch/project-alpha',
+          id: 'node-project-alpha',
+          slug: 'project-alpha',
+          title: 'Project Alpha',
+          type: 'page',
+        },
+        {
+          href: '/services/launch/project-beta',
+          id: 'node-project-beta',
+          slug: 'project-beta',
+          title: 'Project Beta',
+          type: 'page',
+        },
+      ],
+      pageTitle: 'Launch projects',
+    });
+
+    const providerRequestBody = JSON.parse(fetcher.mock.calls[0][1].body);
+    expect(providerRequestBody.input[1].content).toContain('Child content that must be linked');
+    expect(providerRequestBody.input[1].content).toContain('href="/services/launch/project-alpha"');
+    expect(providerRequestBody.input[1].content).toContain('Project Beta');
+    expect(result).toMatchObject({
+      draft: {
+        blocks: expect.arrayContaining([
+          expect.objectContaining({
+            content: expect.stringContaining('Project Alpha'),
+            href: '/services/launch/project-alpha',
+            type: 'text',
+          }),
+          expect.objectContaining({
+            content: expect.stringContaining('Project Beta'),
+            href: '/services/launch/project-beta',
+            type: 'text',
+          }),
+        ]),
+        localizations: {
+          fr: expect.objectContaining({
+            blocks: expect.arrayContaining([
+              expect.objectContaining({
+                href: '/services/launch/project-alpha',
+              }),
+            ]),
+          }),
+        },
+      },
+      job: {
+        status: 'succeeded',
+      },
+    });
+  });
+
   test.each([
     {
       expectedBody: {

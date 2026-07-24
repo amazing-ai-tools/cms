@@ -33,6 +33,7 @@ export const embeddedPageDraftSchema = {
           type: { type: 'string', enum: ['hero', 'text', 'media'] },
           content: { type: 'string', minLength: 8, maxLength: 1200 },
           assetId: { type: 'string', maxLength: 128 },
+          href: { type: 'string', maxLength: 512 },
           layout: {
             type: 'object',
             additionalProperties: false,
@@ -122,6 +123,7 @@ export const embeddedPageDraftSchema = {
                 type: { type: 'string', enum: ['hero', 'text', 'media'] },
                 content: { type: 'string', minLength: 3, maxLength: 1200 },
                 assetId: { type: 'string', maxLength: 128 },
+                href: { type: 'string', maxLength: 512 },
                 layout: {
                   type: 'object',
                   additionalProperties: false,

@@ -108,6 +108,33 @@ function mediaBlockForAsset(asset, index, row) {
   };
 }
 
+function blockIdForChild(child) {
+  return `block-child-${String(child.id || child.slug || child.title || 'content')
+    .replace(/[^a-zA-Z0-9_-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 48)}`;
+}
+
+function textBlockForChild(child, index, row) {
+  return {
+    id: blockIdForChild(child),
+    type: 'text',
+    content: `Open ${String(child.title || 'child content').trim()}`,
+    href: child.href,
+    layout: {
+      column: index % 2 === 0 ? 1 : 7,
+      row,
+      width: 6,
+    },
+    visual: {
+      backgroundColor: '#f4f8f5',
+      textColor: '#17211b',
+      accentColor: '#2f7d5f',
+      size: 'standard',
+    },
+  };
+}
+
 function appendRequiredBlocksToLocalizations(localizations, blocks, section) {
   return Object.fromEntries(
     Object.entries(localizations ?? {}).map(([language, localization]) => [
@@ -124,6 +151,42 @@ function appendRequiredBlocksToLocalizations(localizations, blocks, section) {
       },
     ]),
   );
+}
+
+function childContentFrom(request) {
+  return (request.childContent ?? []).filter(
+    (child) => String(child.href || '').trim() && String(child.title || '').trim(),
+  );
+}
+
+function ensureChildContentLinks(draft, request) {
+  const missingChildren = childContentFrom(request).filter(
+    (child) => !draft.blocks.some((block) => block.href === child.href),
+  );
+
+  if (!missingChildren.length) {
+    return draft;
+  }
+
+  const baseRow = maxRowFor(draft) + 1;
+  const childBlocks = missingChildren.map((child, index) =>
+    textBlockForChild(child, index, baseRow + Math.floor(index / 2)),
+  );
+  const childSection = {
+    id: 'section-child-content',
+    title: 'Related content',
+    blockIds: childBlocks.map((block) => block.id),
+  };
+
+  return {
+    ...draft,
+    blocks: [...draft.blocks, ...childBlocks],
+    layout: {
+      ...draft.layout,
+      sections: [...draft.layout.sections, childSection],
+    },
+    localizations: appendRequiredBlocksToLocalizations(draft.localizations, childBlocks, childSection),
+  };
 }
 
 function ensureRequiredAssets(draft, request) {
@@ -229,9 +292,16 @@ export function createAiGenerationService(options = {}) {
           prompt,
         });
         steps.push('Validating generated page draft');
-        const draft = ensureRequiredInputs(
-          ensureRequiredAssets(
-            normalizeAndValidateDraftResponse(generatedDraft, { ...request, ai: { ...request.ai, languages } }, now),
+        const draft = ensureChildContentLinks(
+          ensureRequiredInputs(
+            ensureRequiredAssets(
+              normalizeAndValidateDraftResponse(
+                generatedDraft,
+                { ...request, ai: { ...request.ai, languages } },
+                now,
+              ),
+              request,
+            ),
             request,
           ),
           request,

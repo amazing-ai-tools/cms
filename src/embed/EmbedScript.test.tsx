@@ -247,6 +247,58 @@ describe('external embed script', () => {
     expect(target.querySelector('a[download]')?.getAttribute('href')).toBe(version.cdnUrls.media[3]);
   });
 
+  test('renders child content href blocks as links in the embedded site', async () => {
+    const target = document.createElement('div');
+    await renderEmbedFromCdn({
+      cdnService: {
+        publishVersion: async () => {
+          throw new Error('publishVersion is not used by this test.');
+        },
+        readJson: async <T,>() => ({
+          title: 'Project index',
+          blocks: [
+            {
+              id: 'block-child-project-alpha',
+              type: 'text',
+              content: 'Open Project Alpha',
+              href: '/category-1/page-1/project-alpha',
+              layout: {
+                column: 1,
+                row: 1,
+                width: 6,
+              },
+              visual: {
+                backgroundColor: '#ffffff',
+                textColor: '#17211b',
+                accentColor: '#2f7d5f',
+                size: 'standard',
+              },
+            },
+          ],
+          layout: {
+            canvas: { maxWidth: 1120 },
+            sections: [{ id: 'section-children', blockIds: ['block-child-project-alpha'] }],
+          },
+          visual: {
+            accentColor: '#2f7d5f',
+            backgroundColor: '#fbfcf8',
+            textColor: '#18201c',
+            spacing: 'balanced',
+          },
+          mediaAssets: [],
+        }) as T,
+        verifyUrl: async () => false,
+      },
+      contentUrl: 'https://cdn.local/page/content.json',
+      target,
+    });
+
+    expect(target.querySelector('a')?.getAttribute('href')).toBe(
+      '/category-1/page-1/project-alpha',
+    );
+    expect(target.querySelector('a')).toHaveTextContent('Open Project Alpha');
+  });
+
   test('CMS displays an embed script after publish and explains when publishing is required', async () => {
     const unpublishedServices = await createEmbedFixture('embed-unpublished-ui', false);
 

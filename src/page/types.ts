@@ -68,6 +68,7 @@ export interface PageDraftBlock {
   type: PageDraftBlockType;
   content: string;
   assetId?: string;
+  href?: string;
   layout: PageDraftBlockLayout;
   visual: PageDraftBlockVisual;
 }

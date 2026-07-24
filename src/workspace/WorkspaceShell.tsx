@@ -149,6 +149,34 @@ function hierarchyPathFor(nodes: ContentNode[], node: ContentNode) {
   return path;
 }
 
+function hierarchySlugPathFor(nodes: ContentNode[], node: ContentNode) {
+  const path: string[] = [];
+  let currentNode: ContentNode | undefined = node;
+
+  while (currentNode) {
+    path.unshift(currentNode.slug ?? slugForNodeTitle(currentNode.title, currentNode.type === 'page' ? 'page' : 'category'));
+    currentNode = currentNode.parentId
+      ? nodes.find((candidate) => candidate.id === currentNode?.parentId)
+      : undefined;
+  }
+
+  return path;
+}
+
+function childContentFor(nodes: ContentNode[], node: ContentNode) {
+  return childNodesFor(nodes, node.id).map((child) => {
+    const href = `/${hierarchySlugPathFor(nodes, child).map(encodeURIComponent).join('/')}`;
+
+    return {
+      href,
+      id: child.id,
+      slug: child.slug ?? slugForNodeTitle(child.title, child.type === 'page' ? 'page' : 'category'),
+      title: child.title,
+      type: child.type,
+    };
+  });
+}
+
 function generationStatusLabel(job: GenerationJob) {
   if (job.status === 'failed') {
     return 'Generation failed';
@@ -596,6 +624,7 @@ export function WorkspaceShell({
           provider: aiForm.provider,
         },
         hierarchyPath: hierarchyPathFor(nodes, selectedNode),
+        childContent: childContentFor(nodes, selectedNode),
         pageContext: selectedPageContext,
         pageId: selectedNode.id,
         pageTitle: selectedNode.title,

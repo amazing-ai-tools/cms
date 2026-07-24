@@ -187,4 +187,31 @@ describe('page draft preview', () => {
     expect(screen.queryByText(/concise promise/i)).not.toBeInTheDocument();
     expect(screen.getByTestId('draft-preview')).toHaveAttribute('lang', 'fr');
   });
+
+  test('renders draft text blocks with href as clickable child content links', () => {
+    const linkBlock = {
+      ...draft.blocks[1],
+      content: 'Open Project Alpha',
+      href: '/category-1/page-1/project-alpha',
+      id: 'block-child-project-alpha',
+    } as PageDraft['blocks'][number] & { href: string };
+    render(
+      <PageDraftPreview
+        assets={assets}
+        draft={{
+          ...draft,
+          blocks: [linkBlock],
+          layout: {
+            ...draft.layout,
+            sections: [{ id: 'section-children', blockIds: [linkBlock.id] }],
+          },
+        }}
+      />,
+    );
+
+    expect(screen.getByRole('link', { name: /open project alpha/i })).toHaveAttribute(
+      'href',
+      '/category-1/page-1/project-alpha',
+    );
+  });
 });

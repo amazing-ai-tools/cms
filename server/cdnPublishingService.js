@@ -82,6 +82,11 @@ const DEFAULT_RENDERER_SCRIPT = `
         blockElement.style.color = block.visual.textColor;
         if (block.type === 'media') {
           blockElement.appendChild(mediaElement(assets.get(block.assetId), block.content));
+        } else if (block.href) {
+          var link = document.createElement('a');
+          link.href = block.href;
+          link.textContent = block.content;
+          blockElement.appendChild(link);
         } else {
           blockElement.textContent = block.content;
         }
