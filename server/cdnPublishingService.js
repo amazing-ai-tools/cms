@@ -12,9 +12,29 @@ const DEFAULT_RENDERER_SCRIPT = `
       blocks: localization && localization.blocks ? localization.blocks : content.blocks,
       layout: localization && localization.layout ? localization.layout : content.layout,
       language: selected,
+      seo: localization && localization.seo ? localization.seo : content.seo,
       title: localization && localization.title ? localization.title : content.title,
       visual: localization && localization.visual ? localization.visual : content.visual
     };
+  }
+
+  function appendSeoMetadata(article, selected) {
+    if (!selected.seo) return;
+    article.setAttribute('aria-label', selected.seo.title);
+    article.setAttribute('data-seo-title', selected.seo.title);
+    article.setAttribute('data-seo-description', selected.seo.description);
+    article.setAttribute('data-seo-keywords', (selected.seo.keywords || []).join(', '));
+    var jsonLd = document.createElement('script');
+    jsonLd.type = 'application/ld+json';
+    jsonLd.textContent = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'WebPage',
+      description: selected.seo.description,
+      inLanguage: selected.language,
+      keywords: (selected.seo.keywords || []).join(', '),
+      name: selected.seo.title
+    });
+    article.appendChild(jsonLd);
   }
 
   function mediaElement(asset, fallbackText) {
@@ -65,7 +85,8 @@ const DEFAULT_RENDERER_SCRIPT = `
     article.lang = selected.language;
     article.style.backgroundColor = selected.visual.backgroundColor;
     article.style.color = selected.visual.textColor;
-    var heading = document.createElement('h2');
+    appendSeoMetadata(article, selected);
+    var heading = document.createElement('h1');
     heading.textContent = selected.title;
     article.appendChild(heading);
     var blocks = new Map((selected.blocks || []).map(function (block) {
@@ -73,6 +94,11 @@ const DEFAULT_RENDERER_SCRIPT = `
     }));
     (selected.layout.sections || []).forEach(function (section) {
       var sectionElement = document.createElement('section');
+      if (section.title) {
+        var sectionHeading = document.createElement('h2');
+        sectionHeading.textContent = section.title;
+        sectionElement.appendChild(sectionHeading);
+      }
       (section.blockIds || []).forEach(function (blockId) {
         var block = blocks.get(blockId);
         if (!block) return;
@@ -197,6 +223,7 @@ export function createFileCdnPublishingService(options = {}) {
         blocks: version.contentSnapshot,
         layout: version.layoutSnapshot,
         visual: version.visualSnapshot,
+        seo: version.seo,
         language: version.language ?? 'en',
         localizations: version.localizations ?? {},
         mediaAssets: publicAssets,

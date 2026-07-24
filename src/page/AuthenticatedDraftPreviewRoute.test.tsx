@@ -58,10 +58,20 @@ function draftFor(pageId: string): PageDraft {
       textColor: '#18201c',
       spacing: 'balanced',
     },
+    seo: {
+      title: 'Partner Launch SEO Title',
+      description: 'Private SEO preview for the partner launch embedded page.',
+      keywords: ['partner launch', 'embedded page'],
+    },
     language: 'en',
     localizations: {
       fr: {
         title: 'Apercu partenaire',
+        seo: {
+          title: 'Apercu partenaire SEO',
+          description: 'Apercu SEO localise pour la page partenaire integree.',
+          keywords: ['partenaire', 'page integree'],
+        },
         blocks: [
           {
             id: 'block-hero',
@@ -136,6 +146,26 @@ describe('authenticated draft preview route', () => {
     expect(screen.getByRole('heading', { name: /apercu partenaire/i })).toBeInTheDocument();
     expect(screen.getByText(/experience partenaire localisee/i)).toBeInTheDocument();
     expect(screen.getByTestId('draft-preview')).toHaveAttribute('lang', 'fr');
+  });
+
+  test('updates standalone preview document metadata from localized SEO fields', async () => {
+    navigateTo('/preview/page-1?lang=fr');
+    const authService = createLocalAuthService({
+      initialUser: user,
+      storageKey: 'preview-route-seo-auth',
+    });
+    const pageContextService = createLocalPageContextService({
+      storageKey: 'preview-route-seo-context',
+    });
+    await pageContextService.saveDraft(draftFor('page-1'));
+
+    render(<App authService={authService} pageContextService={pageContextService} />);
+
+    expect(await screen.findByRole('heading', { name: /apercu partenaire/i })).toBeInTheDocument();
+    expect(document.title).toBe('Apercu partenaire SEO');
+    expect(document.querySelector('meta[name="description"]')?.getAttribute('content')).toBe(
+      'Apercu SEO localise pour la page partenaire integree.',
+    );
   });
 
   test('lets signed-in users inspect standalone previews at desktop tablet and mobile sizes', async () => {

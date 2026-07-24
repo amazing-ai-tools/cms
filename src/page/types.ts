@@ -93,8 +93,15 @@ export interface PageDraftVisual {
   spacing: PageDraftSpacing;
 }
 
+export interface PageDraftSeo {
+  title: string;
+  description: string;
+  keywords: string[];
+}
+
 export interface PageDraftLocalization {
   title: string;
+  seo?: PageDraftSeo;
   blocks: PageDraftBlock[];
   layout?: PageDraftLayout;
   visual?: PageDraftVisual;
@@ -108,6 +115,7 @@ export interface PageDraft {
   blocks: PageDraftBlock[];
   layout: PageDraftLayout;
   visual: PageDraftVisual;
+  seo?: PageDraftSeo;
   language?: string;
   localizations?: Record<string, PageDraftLocalization>;
   createdAt: string;
@@ -122,6 +130,7 @@ export interface SavePageDraftInput {
   blocks: PageDraftBlock[];
   layout: PageDraftLayout;
   visual: PageDraftVisual;
+  seo?: PageDraftSeo;
   language?: string;
   localizations?: Record<string, PageDraftLocalization>;
   createdAt?: string;
@@ -147,6 +156,7 @@ export interface PublishedVersion {
   contentSnapshot: PageDraftBlock[];
   layoutSnapshot: PageDraftLayout;
   visualSnapshot: PageDraftVisual;
+  seo?: PageDraftSeo;
   language?: string;
   localizations?: Record<string, PageDraftLocalization>;
   assetManifest: PublishedAssetReference[];
@@ -178,6 +188,7 @@ export interface PublishableAssetManifest {
     blocks: PageDraftBlock[];
     layout: PageDraftLayout;
     visual: PageDraftVisual;
+    seo?: PageDraftSeo;
     language?: string;
     localizations?: Record<string, PageDraftLocalization>;
     mediaAssets: PublishedAssetReference[];

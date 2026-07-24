@@ -60,6 +60,11 @@ describe('structured generation output', () => {
           expect.objectContaining({ blockIds: expect.arrayContaining(['block-hero']) }),
         ]),
       }),
+      seo: expect.objectContaining({
+        description: expect.stringContaining('editorial membership'),
+        keywords: expect.arrayContaining(['Launch']),
+        title: expect.stringContaining('Launch'),
+      }),
       visual: expect.objectContaining({
         accentColor: expect.stringMatching(/^#/),
         backgroundColor: expect.stringMatching(/^#/),

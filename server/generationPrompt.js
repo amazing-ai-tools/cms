@@ -55,6 +55,7 @@ export function buildGenerationPrompt(request, sources) {
     '- Use 2 to 12 blocks and at least one hero block.',
     '- Prefer editorial, modern, content-specific design choices over generic palettes.',
     '- Use concise, polished copy suitable for publication.',
+    '- Include SEO metadata: title, description, and keywords for the base language and every localization.',
     '- Use only media blocks when a matching uploaded asset exists; otherwise use hero/text blocks.',
     '- Required media must use the uploaded assetId exactly; never invent asset ids.',
     '- If child content exists, include each child as a visible block or card and set the block href to the exact child href.',

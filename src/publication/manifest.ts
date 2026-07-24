@@ -24,6 +24,7 @@ export function buildPublishableManifest(version: ManifestSourceVersion): Publis
       blocks: version.contentSnapshot,
       layout: version.layoutSnapshot,
       visual: version.visualSnapshot,
+      seo: version.seo,
       language: version.language ?? 'en',
       localizations: version.localizations ?? {},
       mediaAssets,

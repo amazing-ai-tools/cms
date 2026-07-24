@@ -60,6 +60,11 @@ function draftFor(pageId: string): PageDraft {
       textColor: '#18201c',
       spacing: 'balanced',
     },
+    seo: {
+      title: 'Manifest draft SEO title',
+      description: 'Manifest description for search-friendly embedded content.',
+      keywords: ['manifest', 'embedded SEO'],
+    },
     createdAt: '2026-07-23T00:00:00.000Z',
     updatedAt: '2026-07-23T00:00:00.000Z',
   };
@@ -99,6 +104,11 @@ describe('publishable asset manifest', () => {
           canvas: expect.objectContaining({ maxWidth: 1120 }),
         }),
         title: 'Manifest draft',
+        seo: {
+          title: 'Manifest draft SEO title',
+          description: 'Manifest description for search-friendly embedded content.',
+          keywords: ['manifest', 'embedded SEO'],
+        },
         visual: expect.objectContaining({ accentColor: '#2f7d5f' }),
       }),
       mediaAssets: [

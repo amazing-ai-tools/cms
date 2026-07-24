@@ -38,9 +38,36 @@ function contentForLanguage(content: PublishableAssetManifest['content'], langua
     blocks: localization?.blocks ?? content.blocks,
     layout: localization?.layout ?? content.layout,
     language: selectedLanguage,
+    seo: localization?.seo ?? content.seo,
     title: localization?.title ?? content.title,
     visual: localization?.visual ?? content.visual,
   };
+}
+
+function appendSeoMetadata(
+  article: HTMLElement,
+  content: ReturnType<typeof contentForLanguage>,
+) {
+  if (!content.seo) {
+    return;
+  }
+
+  article.setAttribute('aria-label', content.seo.title);
+  article.setAttribute('data-seo-title', content.seo.title);
+  article.setAttribute('data-seo-description', content.seo.description);
+  article.setAttribute('data-seo-keywords', content.seo.keywords.join(', '));
+
+  const jsonLd = document.createElement('script');
+  jsonLd.type = 'application/ld+json';
+  jsonLd.textContent = JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    description: content.seo.description,
+    inLanguage: content.language,
+    keywords: content.seo.keywords.join(', '),
+    name: content.seo.title,
+  });
+  article.appendChild(jsonLd);
 }
 
 function mediaElementFor(
@@ -100,8 +127,9 @@ export async function renderEmbedFromCdn({
   article.lang = localizedContent.language;
   article.style.backgroundColor = localizedContent.visual.backgroundColor;
   article.style.color = localizedContent.visual.textColor;
+  appendSeoMetadata(article, localizedContent);
 
-  const heading = document.createElement('h2');
+  const heading = document.createElement('h1');
   heading.textContent = localizedContent.title;
   article.appendChild(heading);
 
@@ -109,6 +137,11 @@ export async function renderEmbedFromCdn({
   const mediaAssetsById = new Map((content.mediaAssets ?? []).map((asset) => [asset.assetId, asset]));
   localizedContent.layout.sections.forEach((section) => {
     const sectionElement = document.createElement('section');
+    if (section.title) {
+      const sectionHeading = document.createElement('h2');
+      sectionHeading.textContent = section.title;
+      sectionElement.appendChild(sectionHeading);
+    }
     section.blockIds.forEach((blockId) => {
       const block = blocksById.get(blockId);
       if (!block) {

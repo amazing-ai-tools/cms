@@ -6,7 +6,7 @@ import type { ContentService } from './content/types';
 import { createLocalGenerationService } from './generation/localGenerationService';
 import type { GenerationService } from './generation/types';
 import { createLocalPageContextService } from './page/localPageContextService';
-import { PageDraftPreview } from './page/PageDraftPreview';
+import { contentForPreviewLanguage, PageDraftPreview } from './page/PageDraftPreview';
 import {
   PreviewViewportControls,
   PreviewViewportFrame,
@@ -183,6 +183,33 @@ function AuthenticatedDraftPreviewRoute({
       isMounted = false;
     };
   }, [authState.status, pageContextService, pageId]);
+
+  React.useEffect(() => {
+    if (previewState.status !== 'ready' || !previewState.context.draft) {
+      return;
+    }
+
+    const draft = previewState.context.draft;
+    const languageOptions = Array.from(
+      new Set([draft.language ?? 'en', ...Object.keys(draft.localizations ?? {})]),
+    );
+    const selectedLanguage = languageOptions.includes(previewLanguage)
+      ? previewLanguage
+      : languageOptions[0] ?? 'en';
+    const localizedContent = contentForPreviewLanguage(draft, selectedLanguage);
+    document.title = localizedContent.seo?.title ?? localizedContent.title;
+
+    let description = document.querySelector('meta[name="description"]');
+    if (!description) {
+      description = document.createElement('meta');
+      description.setAttribute('name', 'description');
+      document.head.appendChild(description);
+    }
+    description.setAttribute(
+      'content',
+      localizedContent.seo?.description ?? `${localizedContent.title} draft preview`,
+    );
+  }, [previewLanguage, previewState]);
 
   async function handleGoogleSignIn() {
     setAuthState({ status: 'loading', session: null, error: '' });

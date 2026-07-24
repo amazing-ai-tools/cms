@@ -64,6 +64,21 @@ export const embeddedPageDraftSchema = {
       minLength: 2,
       maxLength: 16,
     },
+    seo: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['title', 'description', 'keywords'],
+      properties: {
+        title: { type: 'string', minLength: 8, maxLength: 120 },
+        description: { type: 'string', minLength: 24, maxLength: 180 },
+        keywords: {
+          type: 'array',
+          minItems: 2,
+          maxItems: 12,
+          items: { type: 'string', minLength: 2, maxLength: 48 },
+        },
+      },
+    },
     layout: {
       type: 'object',
       additionalProperties: false,
@@ -109,6 +124,21 @@ export const embeddedPageDraftSchema = {
             type: 'string',
             minLength: 3,
             maxLength: 96,
+          },
+          seo: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['title', 'description', 'keywords'],
+            properties: {
+              title: { type: 'string', minLength: 8, maxLength: 120 },
+              description: { type: 'string', minLength: 24, maxLength: 180 },
+              keywords: {
+                type: 'array',
+                minItems: 2,
+                maxItems: 12,
+                items: { type: 'string', minLength: 2, maxLength: 48 },
+              },
+            },
           },
           blocks: {
             type: 'array',
@@ -184,6 +214,47 @@ function validateBlock(block) {
   assert(['compact', 'standard', 'large'].includes(block.visual?.size), 'Content block size is not supported.');
 }
 
+function validateSeo(seo, prefix = 'Draft') {
+  if (!seo) {
+    return;
+  }
+  assert(seo.title?.trim(), `${prefix} SEO title is required.`);
+  assert(seo.description?.trim(), `${prefix} SEO description is required.`);
+  assert(Array.isArray(seo.keywords), `${prefix} SEO keywords must be an array.`);
+  assert(seo.keywords.every((keyword) => String(keyword).trim()), `${prefix} SEO keywords must not be empty.`);
+}
+
+function normalizeSeo(seo, title, blocks) {
+  if (seo?.title?.trim() && seo?.description?.trim() && Array.isArray(seo.keywords)) {
+    return {
+      title: String(seo.title).trim(),
+      description: String(seo.description).trim(),
+      keywords: seo.keywords.map((keyword) => String(keyword).trim()).filter(Boolean),
+    };
+  }
+
+  const text = (blocks ?? [])
+    .filter((block) => block.type !== 'media')
+    .map((block) => String(block.content || '').trim())
+    .filter(Boolean)
+    .join(' ');
+  const description = (text || `Embedded page for ${title}.`).slice(0, 170);
+  const keywords = Array.from(
+    new Set(
+      [title, ...description.split(/\W+/)]
+        .map((word) => String(word).trim())
+        .filter((word) => word.length >= 4)
+        .slice(0, 10),
+    ),
+  );
+
+  return {
+    title: `${title} | Embedded page`,
+    description,
+    keywords: keywords.length >= 2 ? keywords : [String(title).trim(), 'embedded page'],
+  };
+}
+
 function validateLocalization(localization, language) {
   assert(localization?.title?.trim(), `Localization ${language} title is required.`);
   assert(
@@ -191,6 +262,7 @@ function validateLocalization(localization, language) {
     `Localization ${language} must include content blocks.`,
   );
   localization.blocks.forEach(validateBlock);
+  validateSeo(localization.seo, `Localization ${language}`);
 }
 
 export function normalizeAndValidateDraftResponse(responseDraft, request, now) {
@@ -204,8 +276,17 @@ export function normalizeAndValidateDraftResponse(responseDraft, request, now) {
     blocks: responseDraft.blocks ?? [],
     layout: responseDraft.layout,
     visual: responseDraft.visual,
+    seo: normalizeSeo(responseDraft.seo, String(responseDraft.title || request.pageTitle || 'Generated page').trim(), responseDraft.blocks),
     language: String(responseDraft.language || request.ai?.languages?.[0] || 'en').trim(),
-    localizations: responseDraft.localizations ?? {},
+    localizations: Object.fromEntries(
+      Object.entries(responseDraft.localizations ?? {}).map(([language, localization]) => [
+        language,
+        {
+          ...localization,
+          seo: normalizeSeo(localization?.seo, localization?.title || responseDraft.title || request.pageTitle, localization?.blocks || responseDraft.blocks),
+        },
+      ]),
+    ),
     createdAt: timestamp,
     updatedAt: timestamp,
   };
@@ -220,6 +301,7 @@ export function normalizeAndValidateDraftResponse(responseDraft, request, now) {
   assertColor(draft.visual?.backgroundColor, 'Draft background color');
   assertColor(draft.visual?.textColor, 'Draft text color');
   assert(['tight', 'balanced', 'airy'].includes(draft.visual?.spacing), 'Draft spacing is not supported.');
+  validateSeo(draft.seo);
   for (const [language, localization] of Object.entries(draft.localizations ?? {})) {
     validateLocalization(localization, language);
   }

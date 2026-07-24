@@ -19,6 +19,28 @@ function proposalTitleFor(request: GenerationRequest) {
   return `Generated ${request.pageTitle}`;
 }
 
+function seoFor(request: GenerationRequest, title: string) {
+  const inputSummary =
+    request.pageContext.inputs.find((input) => input.content.trim())?.content.trim() ??
+    `Generated embedded page for ${request.pageTitle}.`;
+  const keywords = Array.from(
+    new Set([
+      request.pageTitle,
+      ...request.hierarchyPath,
+      ...request.pageContext.inputs
+        .flatMap((input) => input.content.split(/\W+/))
+        .filter((word) => word.length > 5)
+        .slice(0, 4),
+    ]),
+  ).slice(0, 8);
+
+  return {
+    title: `${title} | ${request.pageTitle}`,
+    description: inputSummary.slice(0, 150),
+    keywords: keywords.length ? keywords : [request.pageTitle],
+  };
+}
+
 function proposalBlocksFor(request: GenerationRequest): PageDraftBlock[] {
   const instructionInputs = request.pageContext.inputs
     .filter((input) => input.type === 'instruction')
@@ -173,12 +195,14 @@ export function createLocalGenerationService(
 
       const jobId = `job-${nextJobId}`;
       nextJobId += 1;
+      const title = proposalTitleFor(request);
+      const seo = seoFor(request, title);
 
       return {
         draft: {
           id: request.pageContext.draft?.id ?? `draft-${request.pageId}`,
           pageId: request.pageId,
-          title: proposalTitleFor(request),
+          title,
           isDirty: true,
           blocks,
           layout: {
@@ -199,12 +223,18 @@ export function createLocalGenerationService(
             textColor: '#18201c',
             spacing: 'balanced',
           },
+          seo,
           language: baseLanguage,
           localizations: Object.fromEntries(
             localizedLanguages.map((language) => [
               language,
               {
-                title: `${proposalTitleFor(request)} (${language})`,
+                title: `${title} (${language})`,
+                seo: {
+                  title: `${seo.title} (${language})`,
+                  description: `${seo.description} (${language})`,
+                  keywords: seo.keywords,
+                },
                 blocks: blocks.map((block) => ({
                   ...block,
                   content: block.type === 'media' ? block.content : `${block.content} (${language})`,

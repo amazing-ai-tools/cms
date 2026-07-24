@@ -60,10 +60,20 @@ function draftFor(pageId: string, title: string): PageDraft {
       textColor: '#18201c',
       spacing: 'balanced',
     },
+    seo: {
+      title: `${title} | Customer site`,
+      description: `${title} embed optimized for search discovery.`,
+      keywords: ['embedded content', 'customer site'],
+    },
     language: 'en',
     localizations: {
       fr: {
         title: 'Page integree',
+        seo: {
+          title: 'Page integree | Site client',
+          description: 'Page integree optimisee pour la recherche.',
+          keywords: ['page integree', 'site client'],
+        },
         blocks: [
           {
             id: 'block-hero',
@@ -156,6 +166,69 @@ describe('external embed script', () => {
 
     expect(target).toHaveTextContent('Page integree');
     expect(target).toHaveTextContent('Experience de lancement partenaire');
+    expect(target.querySelector('h1')).toHaveTextContent('Page integree');
+    expect(target.querySelector('script[type="application/ld+json"]')).toHaveTextContent(
+      'Page integree | Site client',
+    );
+  });
+
+  test('renders embedded SEO metadata as semantic article attributes and JSON-LD', async () => {
+    const target = document.createElement('div');
+    await renderEmbedFromCdn({
+      cdnService: {
+        publishVersion: async () => {
+          throw new Error('publishVersion is not used by this test.');
+        },
+        readJson: async <T,>() => ({
+          title: 'Searchable service page',
+          seo: {
+            title: 'Searchable Service Page | Example',
+            description: 'A searchable embedded service page with crawlable sections and links.',
+            keywords: ['service page', 'embedded SEO'],
+          },
+          blocks: [
+            {
+              id: 'block-hero',
+              type: 'hero',
+              content: 'Searchable hero copy for the embedded service.',
+              layout: { column: 1, row: 1, width: 12 },
+              visual: {
+                backgroundColor: '#ffffff',
+                textColor: '#17211b',
+                accentColor: '#2f7d5f',
+                size: 'large',
+              },
+            },
+          ],
+          layout: {
+            canvas: { maxWidth: 1120 },
+            sections: [{ id: 'section-main', title: 'Service details', blockIds: ['block-hero'] }],
+          },
+          visual: {
+            accentColor: '#2f7d5f',
+            backgroundColor: '#fbfcf8',
+            textColor: '#18201c',
+            spacing: 'balanced',
+          },
+          mediaAssets: [],
+        }) as T,
+        verifyUrl: async () => false,
+      },
+      contentUrl: 'https://cdn.local/page/content.json',
+      target,
+    });
+
+    const article = target.querySelector('article');
+    expect(article).toHaveAttribute('aria-label', 'Searchable Service Page | Example');
+    expect(article).toHaveAttribute(
+      'data-seo-description',
+      'A searchable embedded service page with crawlable sections and links.',
+    );
+    expect(target.querySelector('h1')).toHaveTextContent('Searchable service page');
+    expect(target.querySelector('h2')).toHaveTextContent('Service details');
+    expect(target.querySelector('script[type="application/ld+json"]')).toHaveTextContent(
+      'Searchable Service Page | Example',
+    );
   });
 
   test('renders required media blocks as CDN-backed image, audio, video, and download elements', async () => {

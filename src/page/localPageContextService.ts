@@ -259,6 +259,7 @@ export function createLocalPageContextService(
         contentSnapshot: copySnapshot(draft.blocks),
         layoutSnapshot: copySnapshot(draft.layout),
         visualSnapshot: copySnapshot(draft.visual),
+        seo: draft.seo ? copySnapshot(draft.seo) : undefined,
         language: draft.language ?? 'en',
         localizations: copySnapshot(draft.localizations ?? {}),
         assetManifest: pageAssets.map((asset) => ({
@@ -341,6 +342,7 @@ export function createLocalPageContextService(
         blocks: input.blocks,
         layout: input.layout,
         visual: input.visual,
+        seo: input.seo ?? existingDraft?.seo,
         language: input.language ?? existingDraft?.language ?? 'en',
         localizations: input.localizations ?? existingDraft?.localizations ?? {},
         createdAt: input.createdAt ?? existingDraft?.createdAt ?? now,

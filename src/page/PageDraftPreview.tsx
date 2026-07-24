@@ -1,13 +1,29 @@
-import type { CSSProperties } from 'react';
-import type { PageAsset, PageDraft, PageDraftBlock } from './types';
+import type { CSSProperties, FocusEvent, ReactNode } from 'react';
+import type {
+  PageAsset,
+  PageDraft,
+  PageDraftBlock,
+  PageDraftLayout,
+  PageDraftSeo,
+  PageDraftVisual,
+} from './types';
 
 interface PageDraftPreviewProps {
   assets: PageAsset[];
   draft: PageDraft;
+  editable?: boolean;
   language?: string;
+  onDraftChange?: (draft: PageDraft) => void;
 }
 
-function localizedDraftContent(draft: PageDraft, language?: string) {
+export function contentForPreviewLanguage(draft: PageDraft, language?: string): {
+  blocks: PageDraftBlock[];
+  layout: PageDraftLayout;
+  language: string;
+  seo?: PageDraftSeo;
+  title: string;
+  visual: PageDraftVisual;
+} {
   const requestedLanguage = language || draft.language || 'en';
   const localization =
     requestedLanguage && requestedLanguage !== (draft.language ?? 'en')
@@ -18,6 +34,7 @@ function localizedDraftContent(draft: PageDraft, language?: string) {
     blocks: localization?.blocks ?? draft.blocks,
     layout: localization?.layout ?? draft.layout,
     language: requestedLanguage,
+    seo: localization?.seo ?? draft.seo,
     title: localization?.title ?? draft.title,
     visual: localization?.visual ?? draft.visual,
   };
@@ -36,18 +53,192 @@ function classNameFor(block: PageDraftBlock) {
   return `draft-block ${block.type} ${block.visual.size}`;
 }
 
-function linkedContent(block: PageDraftBlock) {
-  return block.href ? <a href={block.href}>{block.content}</a> : block.content;
+function linkedContent(block: PageDraftBlock, children?: ReactNode) {
+  const content = children ?? block.content;
+  return block.href ? <a href={block.href}>{content}</a> : content;
 }
 
-export function PageDraftPreview({ assets, draft, language }: PageDraftPreviewProps) {
-  const localizedDraft = localizedDraftContent(draft, language);
+function textFrom(element: HTMLElement) {
+  return element.textContent?.replace(/\s+/g, ' ').trim() ?? '';
+}
+
+function updatedLocalizationLayout(draft: PageDraft, language: string) {
+  return draft.localizations?.[language]?.layout ?? {
+    ...draft.layout,
+    sections: draft.layout.sections.map((section) => ({ ...section })),
+  };
+}
+
+function updateLocalizedDraftTitle(draft: PageDraft, language: string, title: string): PageDraft {
+  if (language === (draft.language ?? 'en')) {
+    return { ...draft, title, updatedAt: new Date().toISOString() };
+  }
+
+  const currentLocalization = draft.localizations?.[language] ?? {
+    blocks: draft.blocks,
+    title: draft.title,
+  };
+
+  return {
+    ...draft,
+    localizations: {
+      ...draft.localizations,
+      [language]: {
+        ...currentLocalization,
+        title,
+      },
+    },
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function updateLocalizedBlockContent(
+  draft: PageDraft,
+  language: string,
+  blockId: string,
+  content: string,
+): PageDraft {
+  if (language === (draft.language ?? 'en')) {
+    return {
+      ...draft,
+      blocks: draft.blocks.map((block) => (block.id === blockId ? { ...block, content } : block)),
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  const currentLocalization = draft.localizations?.[language] ?? {
+    blocks: draft.blocks,
+    title: draft.title,
+  };
+
+  return {
+    ...draft,
+    localizations: {
+      ...draft.localizations,
+      [language]: {
+        ...currentLocalization,
+        blocks: currentLocalization.blocks.map((block) =>
+          block.id === blockId ? { ...block, content } : block,
+        ),
+      },
+    },
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function updateLocalizedSectionTitle(
+  draft: PageDraft,
+  language: string,
+  sectionId: string,
+  title: string,
+): PageDraft {
+  if (language === (draft.language ?? 'en')) {
+    return {
+      ...draft,
+      layout: {
+        ...draft.layout,
+        sections: draft.layout.sections.map((section) =>
+          section.id === sectionId ? { ...section, title } : section,
+        ),
+      },
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  const currentLocalization = draft.localizations?.[language] ?? {
+    blocks: draft.blocks,
+    title: draft.title,
+  };
+  const layout = updatedLocalizationLayout(draft, language);
+
+  return {
+    ...draft,
+    localizations: {
+      ...draft.localizations,
+      [language]: {
+        ...currentLocalization,
+        layout: {
+          ...layout,
+          sections: layout.sections.map((section) =>
+            section.id === sectionId ? { ...section, title } : section,
+          ),
+        },
+      },
+    },
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function InlineEditableText({
+  ariaLabel,
+  children,
+  className,
+  editable,
+  onCommit,
+}: {
+  ariaLabel: string;
+  children: ReactNode;
+  className?: string;
+  editable: boolean;
+  onCommit: (value: string) => void;
+}) {
+  function handleBlur(event: FocusEvent<HTMLElement>) {
+    const value = textFrom(event.currentTarget);
+    if (value) {
+      onCommit(value);
+    }
+  }
+
+  if (!editable) {
+    return <>{children}</>;
+  }
+
+  return (
+    <span
+      aria-label={ariaLabel}
+      className={className ? `draft-inline-editor ${className}` : 'draft-inline-editor'}
+      contentEditable
+      role="textbox"
+      suppressContentEditableWarning
+      tabIndex={0}
+      onBlur={handleBlur}
+    >
+      {children}
+    </span>
+  );
+}
+
+export function PageDraftPreview({
+  assets,
+  draft,
+  editable = false,
+  language,
+  onDraftChange,
+}: PageDraftPreviewProps) {
+  const localizedDraft = contentForPreviewLanguage(draft, language);
+  const canEdit = editable && Boolean(onDraftChange);
   const assetsById = new Map(assets.map((asset) => [asset.id, asset]));
   const blocksById = new Map(localizedDraft.blocks.map((block) => [block.id, block]));
+
+  function commitTitle(title: string) {
+    onDraftChange?.(updateLocalizedDraftTitle(draft, localizedDraft.language, title));
+  }
+
+  function commitBlockContent(blockId: string, content: string) {
+    onDraftChange?.(updateLocalizedBlockContent(draft, localizedDraft.language, blockId, content));
+  }
+
+  function commitSectionTitle(sectionId: string, title: string) {
+    onDraftChange?.(updateLocalizedSectionTitle(draft, localizedDraft.language, sectionId, title));
+  }
 
   return (
     <article
       className={`draft-preview ${localizedDraft.visual.spacing}`}
+      aria-label={localizedDraft.seo?.title ?? localizedDraft.title}
+      data-seo-description={localizedDraft.seo?.description}
+      data-seo-keywords={localizedDraft.seo?.keywords.join(', ')}
+      data-seo-title={localizedDraft.seo?.title}
       data-testid="draft-preview"
       lang={localizedDraft.language}
       style={{
@@ -58,11 +249,25 @@ export function PageDraftPreview({ assets, draft, language }: PageDraftPreviewPr
     >
       <header className="draft-preview-header">
         <span style={{ color: localizedDraft.visual.accentColor }}>Draft proposal</span>
-        <h3>{localizedDraft.title}</h3>
+        <h1>
+          <InlineEditableText editable={canEdit} ariaLabel="Edit preview title" onCommit={commitTitle}>
+            {localizedDraft.title}
+          </InlineEditableText>
+        </h1>
       </header>
       {localizedDraft.layout.sections.map((section) => (
         <section className="draft-preview-section" key={section.id}>
-          {section.title ? <h4>{section.title}</h4> : null}
+          {section.title ? (
+            <h2>
+              <InlineEditableText
+                editable={canEdit}
+                ariaLabel={`Edit section ${section.id} title`}
+                onCommit={(value) => commitSectionTitle(section.id, value)}
+              >
+                {section.title}
+              </InlineEditableText>
+            </h2>
+          ) : null}
           <div className="draft-preview-grid">
             {section.blockIds.map((blockId) => {
               const block = blocksById.get(blockId);
@@ -79,11 +284,47 @@ export function PageDraftPreview({ assets, draft, language }: PageDraftPreviewPr
                   key={block.id}
                   style={blockStyle(block)}
                 >
-                  {block.type === 'hero' ? <strong>{linkedContent(block)}</strong> : null}
-                  {block.type === 'text' ? <p>{linkedContent(block)}</p> : null}
+                  {block.type === 'hero' ? (
+                    <strong>
+                      {block.href && !canEdit ? (
+                        linkedContent(block)
+                      ) : (
+                        <InlineEditableText
+                          editable={canEdit}
+                          ariaLabel={`Edit block ${block.id} content`}
+                          onCommit={(value) => commitBlockContent(block.id, value)}
+                        >
+                          {block.content}
+                        </InlineEditableText>
+                      )}
+                    </strong>
+                  ) : null}
+                  {block.type === 'text' ? (
+                    <p>
+                      {block.href && !canEdit ? (
+                        linkedContent(block)
+                      ) : (
+                        <InlineEditableText
+                          editable={canEdit}
+                          ariaLabel={`Edit block ${block.id} content`}
+                          onCommit={(value) => commitBlockContent(block.id, value)}
+                        >
+                          {block.content}
+                        </InlineEditableText>
+                      )}
+                    </p>
+                  ) : null}
                   {block.type === 'media' ? (
                     <div className="draft-media-block">
-                      <span>{asset?.filename ?? block.content}</span>
+                      <span>
+                        <InlineEditableText
+                          editable={canEdit}
+                          ariaLabel={`Edit block ${block.id} content`}
+                          onCommit={(value) => commitBlockContent(block.id, value)}
+                        >
+                          {block.content || asset?.filename || 'Media'}
+                        </InlineEditableText>
+                      </span>
                       <small>{asset?.family ?? 'media'}</small>
                     </div>
                   ) : null}

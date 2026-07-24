@@ -166,6 +166,11 @@ describe('AI generation service', () => {
         id: 'draft-page-1',
         isDirty: true,
         pageId: 'page-1',
+        seo: {
+          description: 'Search-friendly service page generated from client source material.',
+          keywords: ['service page', 'embedded CMS'],
+          title: 'Reference-led service page | Services',
+        },
         title: 'Reference-led service page',
         blocks: [
           expect.objectContaining({ id: 'block-hero', type: 'hero' }),
@@ -203,6 +208,7 @@ describe('AI generation service', () => {
       },
     });
     expect(JSON.stringify(body)).toContain('Target languages: en, fr');
+    expect(JSON.stringify(body)).toContain('SEO metadata');
   });
 
   test('requires selected languages and required assets in the generated draft', async () => {
@@ -519,6 +525,11 @@ function pageDraftResponse() {
       },
     ],
     language: 'en',
+    seo: {
+      title: 'Reference-led service page | Services',
+      description: 'Search-friendly service page generated from client source material.',
+      keywords: ['service page', 'embedded CMS'],
+    },
     layout: {
       canvas: { maxWidth: 1120 },
       sections: [
@@ -532,6 +543,11 @@ function pageDraftResponse() {
     localizations: {
       fr: {
         title: 'Page de service pilote',
+        seo: {
+          title: 'Page de service pilote | Services',
+          description: 'Page de service optimisee pour la recherche.',
+          keywords: ['page de service', 'CMS integre'],
+        },
         blocks: [
           {
             id: 'block-hero',

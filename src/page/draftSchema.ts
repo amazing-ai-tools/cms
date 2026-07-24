@@ -2,6 +2,7 @@ import type {
   PageDraft,
   PageDraftBlock,
   PageDraftLayout,
+  PageDraftSeo,
   PageDraftVisual,
   SavePageDraftInput,
 } from './types';
@@ -68,6 +69,20 @@ function validateVisual(visual: PageDraftVisual, prefix = 'Draft') {
   );
 }
 
+function validateSeo(seo: PageDraftSeo | undefined, prefix = 'Draft') {
+  if (!seo) {
+    return;
+  }
+
+  assert(seo.title.trim(), `${prefix} SEO title is required.`);
+  assert(seo.description.trim(), `${prefix} SEO description is required.`);
+  assert(Array.isArray(seo.keywords), `${prefix} SEO keywords must be an array.`);
+  assert(
+    seo.keywords.every((keyword) => keyword.trim()),
+    `${prefix} SEO keywords must not be empty.`,
+  );
+}
+
 function validateBlocks(blocks: PageDraftBlock[]) {
   assert(blocks.length > 0, 'Draft must include at least one content block.');
   const blockIds = new Set<string>();
@@ -86,6 +101,7 @@ export function validatePageDraft(input: SavePageDraftInput | PageDraft) {
   const blockIds = validateBlocks(input.blocks);
   validateLayout(input.layout, blockIds);
   validateVisual(input.visual);
+  validateSeo(input.seo);
 
   Object.entries(input.localizations ?? {}).forEach(([language, localization]) => {
     assert(language.trim(), 'Localization language is required.');
@@ -97,5 +113,6 @@ export function validatePageDraft(input: SavePageDraftInput | PageDraft) {
     if (localization.visual) {
       validateVisual(localization.visual, `Localization ${language}`);
     }
+    validateSeo(localization.seo, `Localization ${language}`);
   });
 }

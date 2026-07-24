@@ -146,4 +146,21 @@ describe('draft attribute editing', () => {
       gridColumn: '1 / span 6',
     });
   });
+
+  test('saves direct preview text edits back into the page draft', async () => {
+    const { page, pageContextService } = await renderWorkspaceWithDraft();
+    const previewPanel = screen.getByRole('region', { name: /page preview/i });
+    const heroEditor = await within(previewPanel).findByRole('textbox', {
+      name: /edit block block-hero content/i,
+    });
+
+    heroEditor.textContent = 'Edited directly inside the preview canvas.';
+    fireEvent.blur(heroEditor);
+
+    await waitFor(async () => {
+      const savedDraft = (await pageContextService.loadPageContext(page.id)).draft;
+      expect(savedDraft?.blocks[0].content).toBe('Edited directly inside the preview canvas.');
+      expect(savedDraft?.isDirty).toBe(true);
+    });
+  });
 });

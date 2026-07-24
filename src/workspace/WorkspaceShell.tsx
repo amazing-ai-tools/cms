@@ -1202,7 +1202,9 @@ export function WorkspaceShell({
               <PageDraftPreview
                 assets={pageContext?.assets ?? []}
                 draft={previewDraft}
+                editable={!selectedVersion}
                 language={selectedPreviewLanguage}
+                onDraftChange={handleDraftChange}
               />
             </PreviewViewportFrame>
             {selectedVersion ? null : (
