@@ -31,6 +31,11 @@ import type {
 import { readUploadSourceForFile } from '../page/uploadSource';
 import { normalizeUrl } from '../page/url';
 import {
+  PreviewViewportControls,
+  PreviewViewportFrame,
+  type PreviewViewport,
+} from '../page/PreviewViewportFrame';
+import {
   defaultWorkspaceAiSettings,
   effortOptionsFor,
   WORKSPACE_LANGUAGE_OPTIONS,
@@ -262,6 +267,7 @@ export function WorkspaceShell({
   const [isAiSettingsOpen, setIsAiSettingsOpen] = React.useState(false);
   const [isSavingAiSettings, setIsSavingAiSettings] = React.useState(false);
   const [previewLanguage, setPreviewLanguage] = React.useState('en');
+  const [previewViewport, setPreviewViewport] = React.useState<PreviewViewport>('desktop');
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
   const selectedNode = nodes.find((node) => node.id === selectedNodeId) ?? null;
   const selectedCategory = canCreateChildCategory(selectedNode) ? selectedNode : null;
@@ -1172,25 +1178,33 @@ export function WorkspaceShell({
         ) : null}
         {isPageCapableNode(selectedNode) && previewDraft ? (
           <>
-            <label className="preview-language-selector" htmlFor="workspace-preview-language">
-              Preview language
-              <select
-                id="workspace-preview-language"
-                value={selectedPreviewLanguage}
-                onChange={(event) => setPreviewLanguage(event.target.value)}
-              >
-                {previewLanguageOptions.map((language) => (
-                  <option key={language} value={language}>
-                    {language}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <PageDraftPreview
-              assets={pageContext?.assets ?? []}
-              draft={previewDraft}
-              language={selectedPreviewLanguage}
-            />
+            <div className="preview-toolbar">
+              <label className="preview-language-selector" htmlFor="workspace-preview-language">
+                Preview language
+                <select
+                  id="workspace-preview-language"
+                  value={selectedPreviewLanguage}
+                  onChange={(event) => setPreviewLanguage(event.target.value)}
+                >
+                  {previewLanguageOptions.map((language) => (
+                    <option key={language} value={language}>
+                      {language}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <PreviewViewportControls
+                viewport={previewViewport}
+                onViewportChange={setPreviewViewport}
+              />
+            </div>
+            <PreviewViewportFrame viewport={previewViewport}>
+              <PageDraftPreview
+                assets={pageContext?.assets ?? []}
+                draft={previewDraft}
+                language={selectedPreviewLanguage}
+              />
+            </PreviewViewportFrame>
             {selectedVersion ? null : (
               <PageDraftEditor draft={previewDraft} onDraftChange={handleDraftChange} />
             )}

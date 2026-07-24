@@ -138,6 +138,37 @@ describe('authenticated draft preview route', () => {
     expect(screen.getByTestId('draft-preview')).toHaveAttribute('lang', 'fr');
   });
 
+  test('lets signed-in users inspect standalone previews at desktop tablet and mobile sizes', async () => {
+    navigateTo('/preview/page-1');
+    const authService = createLocalAuthService({
+      initialUser: user,
+      storageKey: 'preview-route-viewport-auth',
+    });
+    const pageContextService = createLocalPageContextService({
+      storageKey: 'preview-route-viewport-context',
+    });
+    await pageContextService.saveDraft(draftFor('page-1'));
+
+    render(<App authService={authService} pageContextService={pageContextService} />);
+
+    expect(await screen.findByRole('heading', { name: /partner launch draft/i })).toBeInTheDocument();
+    expect(screen.getByTestId('preview-viewport-frame')).toHaveAttribute('data-viewport', 'desktop');
+
+    await userEvent.click(screen.getByRole('button', { name: /mobile 390/i }));
+
+    expect(screen.getByTestId('preview-viewport-frame')).toHaveAttribute('data-viewport', 'mobile');
+    expect(screen.getByTestId('preview-viewport-frame')).toHaveStyle({
+      maxWidth: '390px',
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: /tablet 768/i }));
+
+    expect(screen.getByTestId('preview-viewport-frame')).toHaveAttribute('data-viewport', 'tablet');
+    expect(screen.getByTestId('preview-viewport-frame')).toHaveStyle({
+      maxWidth: '768px',
+    });
+  });
+
   test('requires Google sign-in before showing a draft preview', async () => {
     navigateTo('/preview/page-1');
     const authService = createLocalAuthService({ storageKey: 'preview-route-signed-out-auth' });
@@ -197,6 +228,16 @@ describe('authenticated draft preview route', () => {
     await waitFor(() => {
       expect(within(previewPanel).getByRole('button', { name: /open draft preview/i })).toBeEnabled();
     });
+
+    expect(within(previewPanel).getByTestId('preview-viewport-frame')).toHaveAttribute(
+      'data-viewport',
+      'desktop',
+    );
+    await userEvent.click(within(previewPanel).getByRole('button', { name: /tablet 768/i }));
+    expect(within(previewPanel).getByTestId('preview-viewport-frame')).toHaveAttribute(
+      'data-viewport',
+      'tablet',
+    );
 
     await userEvent.click(within(previewPanel).getByRole('button', { name: /open draft preview/i }));
 

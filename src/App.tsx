@@ -7,6 +7,11 @@ import { createLocalGenerationService } from './generation/localGenerationServic
 import type { GenerationService } from './generation/types';
 import { createLocalPageContextService } from './page/localPageContextService';
 import { PageDraftPreview } from './page/PageDraftPreview';
+import {
+  PreviewViewportControls,
+  PreviewViewportFrame,
+  type PreviewViewport,
+} from './page/PreviewViewportFrame';
 import type { PageContext, PageContextService } from './page/types';
 import { createLocalWorkspaceAiSettingsService } from './workspace/localWorkspaceAiSettingsService';
 import { createLocalWorkspaceService } from './workspace/localWorkspaceService';
@@ -116,6 +121,7 @@ function AuthenticatedDraftPreviewRoute({
   const [previewLanguage, setPreviewLanguage] = React.useState(() =>
     previewLanguageFrom(window.location.search),
   );
+  const [previewViewport, setPreviewViewport] = React.useState<PreviewViewport>('desktop');
 
   React.useEffect(() => {
     let isMounted = true;
@@ -249,25 +255,33 @@ function AuthenticatedDraftPreviewRoute({
 
   return (
     <main className="standalone-preview-shell" data-page-id={pageId}>
-      <label className="standalone-preview-language" htmlFor="standalone-preview-language">
-        Preview language
-        <select
-          id="standalone-preview-language"
-          value={selectedPreviewLanguage}
-          onChange={(event) => setPreviewLanguage(event.target.value)}
-        >
-          {languageOptions.map((language) => (
-            <option key={language} value={language}>
-              {language}
-            </option>
-          ))}
-        </select>
-      </label>
-      <PageDraftPreview
-        assets={previewState.context.assets}
-        draft={previewState.context.draft}
-        language={selectedPreviewLanguage}
-      />
+      <div className="standalone-preview-toolbar">
+        <label className="standalone-preview-language" htmlFor="standalone-preview-language">
+          Preview language
+          <select
+            id="standalone-preview-language"
+            value={selectedPreviewLanguage}
+            onChange={(event) => setPreviewLanguage(event.target.value)}
+          >
+            {languageOptions.map((language) => (
+              <option key={language} value={language}>
+                {language}
+              </option>
+            ))}
+          </select>
+        </label>
+        <PreviewViewportControls
+          viewport={previewViewport}
+          onViewportChange={setPreviewViewport}
+        />
+      </div>
+      <PreviewViewportFrame viewport={previewViewport}>
+        <PageDraftPreview
+          assets={previewState.context.assets}
+          draft={previewState.context.draft}
+          language={selectedPreviewLanguage}
+        />
+      </PreviewViewportFrame>
     </main>
   );
 }
