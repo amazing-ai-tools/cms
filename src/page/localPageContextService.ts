@@ -13,11 +13,17 @@ import type {
   SavePageDraftInput,
 } from './types';
 import { validatePageDraft } from './draftSchema';
+import {
+  createBrowserAssetSourceStore,
+  type AssetSourceStore,
+  type AssetSourceValue,
+} from './assetSourceStore';
 import type { CdnService } from '../publication/cdn';
 import { createLocalCdnService } from '../publication/localCdnService';
 import { buildPublishableManifest } from '../publication/manifest';
 
 interface LocalPageContextServiceOptions {
+  assetSourceStore?: AssetSourceStore;
   cdnService?: CdnService;
   failPublish?: boolean;
   storageKey?: string;
@@ -97,8 +103,77 @@ function readStorage(storageKey: string): PageContextStorage {
   }
 }
 
+function assetSourceKey(storageKey: string, assetId: string) {
+  return `${storageKey}:asset-source:${assetId}`;
+}
+
+function stripAssetSource<T extends { sourceContent?: string }>(asset: T): T {
+  const { sourceContent: _sourceContent, ...publicAsset } = asset;
+  return publicAsset as T;
+}
+
+function sanitizedStorage(storage: PageContextStorage): PageContextStorage {
+  return {
+    ...storage,
+    assets: storage.assets.map(stripAssetSource),
+    versions: storage.versions.map((version) => ({
+      ...version,
+      assetManifest: version.assetManifest.map(stripAssetSource),
+    })),
+  };
+}
+
 function writeStorage(storageKey: string, storage: PageContextStorage) {
   window.localStorage.setItem(storageKey, JSON.stringify(storage));
+}
+
+async function persistAssetSources(
+  storageKey: string,
+  storage: PageContextStorage,
+  assetSourceStore: AssetSourceStore,
+) {
+  await Promise.all(
+    storage.assets
+      .filter((asset): asset is PageAsset & AssetSourceValue => Boolean(asset.sourceContent))
+      .map((asset) =>
+        assetSourceStore.set(assetSourceKey(storageKey, asset.id), {
+          sourceContent: asset.sourceContent,
+          sourceEncoding: asset.sourceEncoding,
+        }),
+      ),
+  );
+}
+
+async function persistStorage(
+  storageKey: string,
+  storage: PageContextStorage,
+  assetSourceStore: AssetSourceStore,
+) {
+  await persistAssetSources(storageKey, storage, assetSourceStore);
+  writeStorage(storageKey, sanitizedStorage(storage));
+}
+
+async function hydrateAssets(
+  storageKey: string,
+  assets: PageAsset[],
+  assetSourceStore: AssetSourceStore,
+): Promise<PageAsset[]> {
+  return Promise.all(
+    assets.map(async (asset) => {
+      if (asset.sourceContent) {
+        return asset;
+      }
+
+      const source = await assetSourceStore.get(assetSourceKey(storageKey, asset.id));
+      return source?.sourceContent
+        ? {
+            ...asset,
+            sourceContent: source.sourceContent,
+            sourceEncoding: source.sourceEncoding ?? asset.sourceEncoding,
+          }
+        : asset;
+    }),
+  );
 }
 
 function materialFamilyFor(filename: string, mimeType: string): MaterialFamily {
@@ -153,6 +228,7 @@ export function createLocalPageContextService(
   options: LocalPageContextServiceOptions = {},
 ): PageContextService {
   const storageKey = options.storageKey ?? 'assisted-cms.page-context';
+  const assetSourceStore = options.assetSourceStore ?? createBrowserAssetSourceStore();
   const cdnService = options.cdnService ?? createLocalCdnService();
   const failPublish = options.failPublish ?? false;
 
@@ -180,7 +256,7 @@ export function createLocalPageContextService(
 
       storage.assets.push(asset);
       storage.nextAssetId += 1;
-      writeStorage(storageKey, storage);
+      await persistStorage(storageKey, storage, assetSourceStore);
 
       return asset;
     },
@@ -198,17 +274,22 @@ export function createLocalPageContextService(
 
       storage.inputs.push(pageInput);
       storage.nextInputId += 1;
-      writeStorage(storageKey, storage);
+      await persistStorage(storageKey, storage, assetSourceStore);
 
       return pageInput;
     },
 
     async loadPageContext(pageId: string): Promise<PageContext> {
       const storage = readStorage(storageKey);
+      const assets = await hydrateAssets(
+        storageKey,
+        storage.assets.filter((asset) => asset.pageId === pageId),
+        assetSourceStore,
+      );
 
       return {
         pageId,
-        assets: storage.assets.filter((asset) => asset.pageId === pageId),
+        assets,
         draft: storage.drafts.find((draft) => draft.pageId === pageId) ?? null,
         inputs: storage.inputs.filter((input) => input.pageId === pageId),
         versions: storage.versions.filter((version) => version.pageId === pageId),
@@ -250,7 +331,11 @@ export function createLocalPageContextService(
       const timestamp = new Date().toISOString();
       const versionNumber =
         storage.versions.filter((version) => version.pageId === input.pageId).length + 1;
-      const pageAssets = storage.assets.filter((asset) => asset.pageId === input.pageId);
+      const pageAssets = await hydrateAssets(
+        storageKey,
+        storage.assets.filter((asset) => asset.pageId === input.pageId),
+        assetSourceStore,
+      );
       const versionSnapshot = {
         id: `version-${storage.nextVersionId}`,
         pageId: input.pageId,
@@ -321,7 +406,7 @@ export function createLocalPageContextService(
         isDirty: false,
         updatedAt: timestamp,
       };
-      writeStorage(storageKey, storage);
+      await persistStorage(storageKey, storage, assetSourceStore);
 
       return versionWithCdn;
     },
@@ -356,7 +441,7 @@ export function createLocalPageContextService(
         storage.nextDraftId += 1;
       }
 
-      writeStorage(storageKey, storage);
+      await persistStorage(storageKey, storage, assetSourceStore);
       return draft;
     },
   };

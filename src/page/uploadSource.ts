@@ -61,6 +61,13 @@ async function fileToDataUrl(file: File) {
 }
 
 export async function readUploadSourceForFile(file: File): Promise<UploadSource> {
+  if (isPdf(file) || isPublishableBinary(file)) {
+    return {
+      sourceContent: await fileToDataUrl(file),
+      sourceEncoding: 'data-url',
+    };
+  }
+
   if (file.size > MAX_ANALYZABLE_UPLOAD_BYTES) {
     return {};
   }
@@ -69,13 +76,6 @@ export async function readUploadSourceForFile(file: File): Promise<UploadSource>
     return {
       sourceContent: await file.text(),
       sourceEncoding: 'text',
-    };
-  }
-
-  if (isPdf(file) || isPublishableBinary(file)) {
-    return {
-      sourceContent: await fileToDataUrl(file),
-      sourceEncoding: 'data-url',
     };
   }
 

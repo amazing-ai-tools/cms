@@ -41,6 +41,17 @@ describe('upload source preservation', () => {
     }
   });
 
+  test('keeps publishable media bytes even when the file is larger than the analysis limit', async () => {
+    const file = new File(['x'.repeat(5 * 1024 * 1024 + 1)], 'large-hero.png', {
+      type: 'image/png',
+    });
+
+    const source = await readUploadSourceForFile(file);
+
+    expect(source.sourceEncoding).toBe('data-url');
+    expect(source.sourceContent).toMatch(/^data:image\/png;base64,/);
+  });
+
   test('stores upload source metadata with page assets', async () => {
     const pageContextService = createLocalPageContextService({
       storageKey: 'upload-source-context',
@@ -61,6 +72,35 @@ describe('upload source preservation', () => {
           filename: 'brief.txt',
           sourceContent: 'Captured source text',
           sourceEncoding: 'text',
+        }),
+      ],
+    });
+  });
+
+  test('keeps large upload bytes outside localStorage while hydrating assets for preview', async () => {
+    const storageKey = 'upload-source-quota-context';
+    const pageContextService = createLocalPageContextService({ storageKey });
+    const sourceContent = `data:image/png;base64,${'a'.repeat(10_000)}`;
+
+    await pageContextService.addAsset({
+      filename: 'hero.png',
+      mimeType: 'image/png',
+      pageId: 'page-1',
+      size: 7_500,
+      sourceContent,
+      sourceEncoding: 'data-url',
+      sourceIntent: 'required',
+    });
+
+    const rawStorage = window.localStorage.getItem(storageKey) ?? '';
+    expect(rawStorage).not.toContain(sourceContent);
+    const reloadedPageContextService = createLocalPageContextService({ storageKey });
+    await expect(reloadedPageContextService.loadPageContext('page-1')).resolves.toMatchObject({
+      assets: [
+        expect.objectContaining({
+          filename: 'hero.png',
+          sourceContent,
+          sourceEncoding: 'data-url',
         }),
       ],
     });
