@@ -58,6 +58,64 @@ function linkedContent(block: PageDraftBlock, children?: ReactNode) {
   return block.href ? <a href={block.href}>{content}</a> : content;
 }
 
+function mediaSourceFor(asset: PageAsset | null) {
+  if (!asset) {
+    return '';
+  }
+
+  if (asset.cdnUrl) {
+    return asset.cdnUrl;
+  }
+
+  if (asset.sourceEncoding === 'data-url' && asset.sourceContent) {
+    return asset.sourceContent;
+  }
+
+  if (/^https?:\/\//i.test(asset.storageUrl) || asset.storageUrl.startsWith('data:')) {
+    return asset.storageUrl;
+  }
+
+  return '';
+}
+
+function MediaPreviewElement({
+  asset,
+  block,
+}: {
+  asset: PageAsset | null;
+  block: PageDraftBlock;
+}) {
+  const label = block.content || asset?.filename || 'Media';
+  const source = mediaSourceFor(asset);
+
+  if (!asset || !source) {
+    return (
+      <div className="draft-media-placeholder">
+        <span>Media preview unavailable</span>
+        <small>{asset?.family ?? 'media'}</small>
+      </div>
+    );
+  }
+
+  if (asset.mimeType.startsWith('image/')) {
+    return <img alt={label} className="draft-media-element" loading="lazy" src={source} />;
+  }
+
+  if (asset.mimeType.startsWith('audio/')) {
+    return <audio className="draft-media-element" controls src={source} />;
+  }
+
+  if (asset.mimeType.startsWith('video/')) {
+    return <video className="draft-media-element" controls playsInline src={source} />;
+  }
+
+  return (
+    <a className="draft-media-download" download={asset.filename} href={source}>
+      Download {asset.filename}
+    </a>
+  );
+}
+
 function textFrom(element: HTMLElement) {
   return element.textContent?.replace(/\s+/g, ' ').trim() ?? '';
 }
@@ -274,7 +332,7 @@ export function PageDraftPreview({
               if (!block) {
                 return null;
               }
-              const asset = block.assetId ? assetsById.get(block.assetId) : null;
+              const asset = block.assetId ? assetsById.get(block.assetId) ?? null : null;
 
               return (
                 <article
@@ -316,7 +374,8 @@ export function PageDraftPreview({
                   ) : null}
                   {block.type === 'media' ? (
                     <div className="draft-media-block">
-                      <span>
+                      <MediaPreviewElement asset={asset} block={block} />
+                      <span className="draft-media-caption">
                         <InlineEditableText
                           editable={canEdit}
                           ariaLabel={`Edit block ${block.id} content`}

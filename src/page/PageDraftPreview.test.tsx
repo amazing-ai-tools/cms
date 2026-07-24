@@ -189,6 +189,98 @@ describe('page draft preview', () => {
     );
   });
 
+  test('renders draft media blocks as image, audio, video, and download elements in the preview', () => {
+    const mediaAssets: PageAsset[] = [
+      {
+        ...assets[0],
+        id: 'asset-image',
+        filename: 'hero.png',
+        mimeType: 'image/png',
+        family: 'image',
+        sourceContent: 'data:image/png;base64,aGVybw==',
+        sourceEncoding: 'data-url',
+      },
+      {
+        ...assets[0],
+        id: 'asset-audio',
+        filename: 'intro.mp3',
+        mimeType: 'audio/mpeg',
+        family: 'audio',
+        sourceContent: 'data:audio/mpeg;base64,YXVkaW8=',
+        sourceEncoding: 'data-url',
+      },
+      {
+        ...assets[0],
+        id: 'asset-video',
+        filename: 'tour.mp4',
+        mimeType: 'video/mp4',
+        family: 'video',
+        sourceContent: 'data:video/mp4;base64,dmlkZW8=',
+        sourceEncoding: 'data-url',
+      },
+      {
+        ...assets[0],
+        id: 'asset-document',
+        filename: 'terms.pdf',
+        mimeType: 'application/pdf',
+        family: 'pdf',
+        sourceContent: 'data:application/pdf;base64,cGRm',
+        sourceEncoding: 'data-url',
+      },
+    ];
+    const mediaBlocks = mediaAssets.map((asset, index) => ({
+      id: `block-${asset.id}`,
+      type: 'media' as const,
+      assetId: asset.id,
+      content: asset.filename,
+      layout: {
+        column: index % 2 === 0 ? 1 : 7,
+        row: Math.floor(index / 2) + 1,
+        width: 6,
+      },
+      visual: {
+        backgroundColor: '#eef3f1',
+        textColor: '#27302b',
+        accentColor: '#2f7d5f',
+        size: 'standard' as const,
+      },
+    }));
+
+    const { container } = render(
+      <PageDraftPreview
+        assets={mediaAssets}
+        draft={{
+          ...draft,
+          blocks: mediaBlocks,
+          layout: {
+            ...draft.layout,
+            sections: [
+              {
+                id: 'section-media',
+                blockIds: mediaBlocks.map((block) => block.id),
+              },
+            ],
+          },
+        }}
+      />,
+    );
+
+    expect(screen.getByRole('img', { name: /hero.png/i })).toHaveAttribute(
+      'src',
+      'data:image/png;base64,aGVybw==',
+    );
+    expect(container.querySelector('audio')?.getAttribute('src')).toBe(
+      'data:audio/mpeg;base64,YXVkaW8=',
+    );
+    expect(container.querySelector('video')?.getAttribute('src')).toBe(
+      'data:video/mp4;base64,dmlkZW8=',
+    );
+    expect(screen.getByRole('link', { name: /download terms.pdf/i })).toHaveAttribute(
+      'href',
+      'data:application/pdf;base64,cGRm',
+    );
+  });
+
   test('renders localized draft copy when a preview language is selected', () => {
     render(<PageDraftPreview assets={assets} draft={draft} language="fr" />);
 
