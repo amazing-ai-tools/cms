@@ -25,7 +25,6 @@ import type {
   PageContext,
   PageContextService,
   PageDraft,
-  PageInputType,
   PageSourceIntent,
   PublishedVersion,
 } from '../page/types';
@@ -209,7 +208,6 @@ export function WorkspaceShell({
   const [nodes, setNodes] = React.useState<ContentNode[]>([]);
   const [selectedNodeId, setSelectedNodeId] = React.useState<string | null>(null);
   const [pageContext, setPageContext] = React.useState<PageContext | null>(null);
-  const [inputType, setInputType] = React.useState<PageInputType>('instruction');
   const [sourceIntent, setSourceIntent] = React.useState<PageSourceIntent>('context');
   const [inputText, setInputText] = React.useState('');
   const [pendingFiles, setPendingFiles] = React.useState<File[]>([]);
@@ -512,6 +510,16 @@ export function WorkspaceShell({
     setComposerError('');
   }
 
+  function handlePasteMaterials(event: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const pastedFiles = Array.from(event.clipboardData.files ?? []);
+    if (!pastedFiles.length) {
+      return;
+    }
+
+    setPendingFiles((currentFiles) => [...currentFiles, ...pastedFiles]);
+    setComposerError('');
+  }
+
   async function handleSendInput() {
     if (!isPageCapableNode(selectedNode) || (!inputText.trim() && pendingFiles.length === 0)) {
       return;
@@ -524,7 +532,7 @@ export function WorkspaceShell({
       if (inputText.trim()) {
         await pageContextService.addInput({
           pageId: selectedNode.id,
-          type: inputType,
+          type: 'instruction',
           content: inputText,
           sourceIntent,
         });
@@ -1239,45 +1247,18 @@ export function WorkspaceShell({
           )}
         </div>
         <fieldset className="chat-composer" disabled={!isPageCapableNode(selectedNode)}>
-          <div className="segmented-control source-intent-control" aria-label="Input usage">
-            <button
-              aria-pressed={sourceIntent === 'context'}
-              type="button"
-              onClick={() => setSourceIntent('context')}
-            >
-              Analyze as context
-            </button>
-            <button
-              aria-pressed={sourceIntent === 'required'}
-              type="button"
-              onClick={() => setSourceIntent('required')}
-            >
-              Must appear
-            </button>
-          </div>
-          <div className="segmented-control" aria-label="Input type">
-            <button
-              aria-pressed={inputType === 'instruction'}
-              type="button"
-              onClick={() => setInputType('instruction')}
-            >
-              Instruction
-            </button>
-            <button
-              aria-pressed={inputType === 'idea'}
-              type="button"
-              onClick={() => setInputType('idea')}
-            >
-              Idea
-            </button>
-            <button
-              aria-pressed={inputType === 'description'}
-              type="button"
-              onClick={() => setInputType('description')}
-            >
-              Description
-            </button>
-          </div>
+          <button
+            aria-pressed={sourceIntent === 'required'}
+            className="source-intent-toggle"
+            type="button"
+            onClick={() =>
+              setSourceIntent((currentIntent) =>
+                currentIntent === 'required' ? 'context' : 'required',
+              )
+            }
+          >
+            Must appear on page
+          </button>
           <label htmlFor="idea-input">Message the page AI</label>
           <textarea
             id="idea-input"
@@ -1288,6 +1269,7 @@ export function WorkspaceShell({
             }
             value={inputText}
             onChange={(event) => setInputText(event.target.value)}
+            onPaste={handlePasteMaterials}
           />
           <label className="material-attachment" htmlFor="material-upload">
             <Paperclip size={16} />

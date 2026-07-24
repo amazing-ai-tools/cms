@@ -314,6 +314,18 @@ describe('AI generation service', () => {
           assetId: 'asset-logo',
           type: 'media',
         }),
+        expect.objectContaining({
+          content: expect.stringContaining('setup in 48 hours'),
+          type: 'text',
+        }),
+      ]),
+    );
+    expect(result.draft.localizations.fr.blocks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          content: expect.stringContaining('setup in 48 hours'),
+          type: 'text',
+        }),
       ]),
     );
     const providerRequestBody = JSON.parse(fetcher.mock.calls[0][1].body);

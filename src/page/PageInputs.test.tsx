@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, test } from 'vitest';
 import { App } from '../App';
@@ -65,21 +65,23 @@ async function renderWorkspaceWithPages() {
 }
 
 describe('right-side page input panel', () => {
-  test('saves instructions and desired descriptions against the selected page in chronological order', async () => {
+  test('keeps the composer simple and lets the system categorize plain text and links', async () => {
     await renderWorkspaceWithPages();
 
     await userEvent.click(screen.getByRole('button', { name: /page 1 page/i }));
     const inputsPanel = screen.getByRole('region', { name: /page inputs/i });
 
-    await userEvent.type(
-      within(inputsPanel).getByLabelText(/message the page ai/i),
-      'Use a concise launch narrative.',
+    expect(within(inputsPanel).queryByRole('button', { name: /^instruction$/i })).not.toBeInTheDocument();
+    expect(within(inputsPanel).queryByRole('button', { name: /^idea$/i })).not.toBeInTheDocument();
+    expect(within(inputsPanel).queryByRole('button', { name: /^description$/i })).not.toBeInTheDocument();
+    expect(within(inputsPanel).getByRole('button', { name: /must appear on page/i })).toHaveAttribute(
+      'aria-pressed',
+      'false',
     );
-    await userEvent.click(within(inputsPanel).getByRole('button', { name: /send/i }));
-    await userEvent.click(within(inputsPanel).getByRole('button', { name: /description/i }));
+
     await userEvent.type(
       within(inputsPanel).getByLabelText(/message the page ai/i),
-      'Describe the customer problem and the generated page goal.',
+      'Use a concise launch narrative and review example.com/source.',
     );
     await userEvent.click(within(inputsPanel).getByRole('button', { name: /send/i }));
 
@@ -88,8 +90,8 @@ describe('right-side page input panel', () => {
     expect(entries).toHaveLength(2);
     expect(entries[0]).toHaveTextContent(/instruction/i);
     expect(entries[0]).toHaveTextContent(/concise launch narrative/i);
-    expect(entries[1]).toHaveTextContent(/description/i);
-    expect(entries[1]).toHaveTextContent(/customer problem/i);
+    expect(entries[1]).toHaveTextContent(/link/i);
+    expect(entries[1]).toHaveTextContent('https://example.com/source');
   });
 
   test('sends a chat instruction with reference links and materials together', async () => {
@@ -124,11 +126,12 @@ describe('right-side page input panel', () => {
     const inputsPanel = screen.getByRole('region', { name: /page inputs/i });
     const logo = new File(['logo'], 'client-logo.png', { type: 'image/png' });
 
-    expect(
-      within(inputsPanel).getByRole('button', { name: /analyze as context/i }),
-    ).toHaveAttribute('aria-pressed', 'true');
+    expect(within(inputsPanel).getByRole('button', { name: /must appear on page/i })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
 
-    await userEvent.click(within(inputsPanel).getByRole('button', { name: /must appear/i }));
+    await userEvent.click(within(inputsPanel).getByRole('button', { name: /must appear on page/i }));
     await userEvent.type(
       within(inputsPanel).getByLabelText(/message the page ai/i),
       'Use this exact guarantee: setup in 48 hours.',
@@ -150,6 +153,32 @@ describe('right-side page input panel', () => {
     expect(within(inputFeed).getByText(/must appear/i)).toBeInTheDocument();
     const assetList = await within(inputsPanel).findByLabelText(/uploaded materials for page 1/i);
     expect(within(assetList).getByText(/must appear/i)).toBeInTheDocument();
+  });
+
+  test('accepts pasted media files as pending attachments without extra categorization fields', async () => {
+    const { pageContextService, pageOne } = await renderWorkspaceWithPages();
+
+    await userEvent.click(screen.getByRole('button', { name: /page 1 page/i }));
+    const inputsPanel = screen.getByRole('region', { name: /page inputs/i });
+    const image = new File(['pasted image'], 'pasted-hero.png', { type: 'image/png' });
+    const composer = within(inputsPanel).getByLabelText(/message the page ai/i);
+
+    fireEvent.paste(composer, {
+      clipboardData: {
+        files: [image],
+      },
+    });
+
+    expect(await within(inputsPanel).findByText('pasted-hero.png')).toBeInTheDocument();
+    await userEvent.click(within(inputsPanel).getByRole('button', { name: /send/i }));
+
+    const context = await pageContextService.loadPageContext(pageOne.id);
+    expect(context.assets).toHaveLength(1);
+    expect(context.assets[0]).toMatchObject({
+      family: 'image',
+      filename: 'pasted-hero.png',
+      sourceIntent: 'context',
+    });
   });
 
   test('does not mix inputs between selected pages', async () => {
