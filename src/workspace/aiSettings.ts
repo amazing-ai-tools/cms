@@ -93,6 +93,7 @@ export const WORKSPACE_LANGUAGE_OPTIONS = [
   { code: 'es', label: 'Spanish' },
   { code: 'de', label: 'German' },
   { code: 'it', label: 'Italian' },
+  { code: 'ar', label: 'Arabic' },
 ];
 
 export function normalizeWorkspaceLanguages(languages: unknown): string[] {
