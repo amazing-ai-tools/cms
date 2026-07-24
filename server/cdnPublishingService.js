@@ -70,6 +70,12 @@ const DEFAULT_RENDERER_SCRIPT = `
     return link;
   }
 
+  function blockFontWeight(block) {
+    if (block.visual.fontWeight === 'bold') return '700';
+    if (block.visual.fontWeight === 'semibold') return '600';
+    return '400';
+  }
+
   async function render(script) {
     var target = document.getElementById(script.dataset.targetId || '');
     if (!target) return;
@@ -106,6 +112,8 @@ const DEFAULT_RENDERER_SCRIPT = `
         blockElement.className = 'assisted-cms-embed-block ' + block.type + ' ' + block.visual.size;
         blockElement.style.backgroundColor = block.visual.backgroundColor;
         blockElement.style.color = block.visual.textColor;
+        blockElement.style.fontWeight = blockFontWeight(block);
+        blockElement.style.textAlign = block.visual.textAlign || 'left';
         if (block.type === 'media') {
           blockElement.appendChild(mediaElement(assets.get(block.assetId), block.content));
         } else if (block.href) {

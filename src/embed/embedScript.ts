@@ -110,6 +110,18 @@ function mediaElementFor(
   return link;
 }
 
+function blockFontWeight(block: PublishableAssetManifest['content']['blocks'][number]) {
+  if (block.visual.fontWeight === 'bold') {
+    return '700';
+  }
+
+  if (block.visual.fontWeight === 'semibold') {
+    return '600';
+  }
+
+  return '400';
+}
+
 export async function renderEmbedFromCdn({
   cdnService,
   contentUrl,
@@ -152,6 +164,8 @@ export async function renderEmbedFromCdn({
       blockElement.className = `assisted-cms-embed-block ${block.type} ${block.visual.size}`;
       blockElement.style.backgroundColor = block.visual.backgroundColor;
       blockElement.style.color = block.visual.textColor;
+      blockElement.style.fontWeight = blockFontWeight(block);
+      blockElement.style.textAlign = block.visual.textAlign ?? 'left';
       if (block.type === 'media') {
         blockElement.appendChild(mediaElementFor(mediaAssetsById.get(block.assetId ?? ''), block.content));
       } else if (block.href) {

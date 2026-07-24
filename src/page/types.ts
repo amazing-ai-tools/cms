@@ -46,8 +46,10 @@ export interface AddPageAssetInput {
 }
 
 export type PageDraftBlockType = 'hero' | 'text' | 'media';
+export type PageDraftFontWeight = 'regular' | 'semibold' | 'bold';
 export type PageDraftSize = 'compact' | 'standard' | 'large';
 export type PageDraftSpacing = 'tight' | 'balanced' | 'airy';
+export type PageDraftTextAlign = 'left' | 'center' | 'right';
 
 export interface PageDraftBlockLayout {
   column: number;
@@ -61,6 +63,8 @@ export interface PageDraftBlockVisual {
   textColor: string;
   accentColor?: string;
   size: PageDraftSize;
+  fontWeight?: PageDraftFontWeight;
+  textAlign?: PageDraftTextAlign;
 }
 
 export interface PageDraftBlock {

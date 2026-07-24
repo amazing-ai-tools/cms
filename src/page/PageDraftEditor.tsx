@@ -1,27 +1,47 @@
-import type { PageDraft, PageDraftBlock, PageDraftSize, PageDraftSpacing } from './types';
+import type {
+  PageDraft,
+  PageDraftBlock,
+  PageDraftFontWeight,
+  PageDraftSize,
+  PageDraftSpacing,
+  PageDraftTextAlign,
+} from './types';
 
 interface PageDraftEditorProps {
   draft: PageDraft;
   onDraftChange: (draft: PageDraft) => void;
+  onSelectedBlockChange?: (blockId: string) => void;
+  selectedBlockId?: string | null;
 }
 
-function updatePrimaryBlock(
+function updateBlock(
   draft: PageDraft,
+  blockId: string,
   updateBlock: (block: PageDraftBlock) => PageDraftBlock,
 ): PageDraft {
-  const primaryBlock = draft.blocks[0];
-  if (!primaryBlock) {
+  if (!draft.blocks.some((block) => block.id === blockId)) {
     return draft;
   }
 
   return {
     ...draft,
-    blocks: draft.blocks.map((block) => (block.id === primaryBlock.id ? updateBlock(block) : block)),
+    blocks: draft.blocks.map((block) => (block.id === blockId ? updateBlock(block) : block)),
   };
 }
 
-export function PageDraftEditor({ draft, onDraftChange }: PageDraftEditorProps) {
-  const primaryBlock = draft.blocks[0];
+function blockLabel(block: PageDraftBlock, index: number) {
+  const content = block.content.trim();
+  return `${index + 1}. ${block.type} - ${content ? content.slice(0, 42) : block.id}`;
+}
+
+export function PageDraftEditor({
+  draft,
+  onDraftChange,
+  onSelectedBlockChange,
+  selectedBlockId,
+}: PageDraftEditorProps) {
+  const selectedBlock =
+    draft.blocks.find((block) => block.id === selectedBlockId) ?? draft.blocks[0] ?? null;
 
   function emitDraft(nextDraft: PageDraft) {
     onDraftChange({
@@ -118,15 +138,102 @@ export function PageDraftEditor({ draft, onDraftChange }: PageDraftEditorProps) 
         <option value="airy">Airy</option>
       </select>
 
-      {primaryBlock ? (
+      {selectedBlock ? (
         <>
-          <label htmlFor="primary-block-size">Primary block size</label>
+          <label htmlFor="selected-block-id">Selected element</label>
           <select
-            id="primary-block-size"
-            value={primaryBlock.visual.size}
+            id="selected-block-id"
+            value={selectedBlock.id}
+            onChange={(event) => onSelectedBlockChange?.(event.target.value)}
+          >
+            {draft.blocks.map((block, index) => (
+              <option key={block.id} value={block.id}>
+                {blockLabel(block, index)}
+              </option>
+            ))}
+          </select>
+
+          <label htmlFor="element-content">Element text</label>
+          <textarea
+            id="element-content"
+            value={selectedBlock.content}
             onChange={(event) =>
               emitDraft(
-                updatePrimaryBlock(draft, (block) => ({
+                updateBlock(draft, selectedBlock.id, (block) => ({
+                  ...block,
+                  content: event.target.value,
+                })),
+              )
+            }
+          />
+
+          <div className="draft-editor-grid">
+            <label htmlFor="element-background-color">
+              Element background color
+              <input
+                id="element-background-color"
+                type="color"
+                value={selectedBlock.visual.backgroundColor}
+                onChange={(event) =>
+                  emitDraft(
+                    updateBlock(draft, selectedBlock.id, (block) => ({
+                      ...block,
+                      visual: {
+                        ...block.visual,
+                        backgroundColor: event.target.value,
+                      },
+                    })),
+                  )
+                }
+              />
+            </label>
+            <label htmlFor="element-text-color">
+              Element text color
+              <input
+                id="element-text-color"
+                type="color"
+                value={selectedBlock.visual.textColor}
+                onChange={(event) =>
+                  emitDraft(
+                    updateBlock(draft, selectedBlock.id, (block) => ({
+                      ...block,
+                      visual: {
+                        ...block.visual,
+                        textColor: event.target.value,
+                      },
+                    })),
+                  )
+                }
+              />
+            </label>
+            <label htmlFor="element-accent-color">
+              Element accent color
+              <input
+                id="element-accent-color"
+                type="color"
+                value={selectedBlock.visual.accentColor ?? draft.visual.accentColor}
+                onChange={(event) =>
+                  emitDraft(
+                    updateBlock(draft, selectedBlock.id, (block) => ({
+                      ...block,
+                      visual: {
+                        ...block.visual,
+                        accentColor: event.target.value,
+                      },
+                    })),
+                  )
+                }
+              />
+            </label>
+          </div>
+
+          <label htmlFor="element-size">Element size</label>
+          <select
+            id="element-size"
+            value={selectedBlock.visual.size}
+            onChange={(event) =>
+              emitDraft(
+                updateBlock(draft, selectedBlock.id, (block) => ({
                   ...block,
                   visual: {
                     ...block.visual,
@@ -141,25 +248,72 @@ export function PageDraftEditor({ draft, onDraftChange }: PageDraftEditorProps) 
             <option value="large">Large</option>
           </select>
 
-          <label htmlFor="primary-block-width">Primary block width</label>
+          <label htmlFor="element-width">Element width</label>
           <input
-            id="primary-block-width"
+            id="element-width"
             max={12}
             min={1}
             type="number"
-            value={primaryBlock.layout.width}
+            value={selectedBlock.layout.width}
             onChange={(event) =>
               emitDraft(
-                updatePrimaryBlock(draft, (block) => ({
+                updateBlock(draft, selectedBlock.id, (block) => ({
                   ...block,
                   layout: {
                     ...block.layout,
-                    width: Number(event.target.value),
+                    width: Math.max(1, Math.min(12, Number(event.target.value))),
                   },
                 })),
               )
             }
           />
+
+          <div className="draft-editor-grid two">
+            <label htmlFor="element-alignment">
+              Element alignment
+              <select
+                id="element-alignment"
+                value={selectedBlock.visual.textAlign ?? 'left'}
+                onChange={(event) =>
+                  emitDraft(
+                    updateBlock(draft, selectedBlock.id, (block) => ({
+                      ...block,
+                      visual: {
+                        ...block.visual,
+                        textAlign: event.target.value as PageDraftTextAlign,
+                      },
+                    })),
+                  )
+                }
+              >
+                <option value="left">Left</option>
+                <option value="center">Center</option>
+                <option value="right">Right</option>
+              </select>
+            </label>
+            <label htmlFor="element-weight">
+              Element weight
+              <select
+                id="element-weight"
+                value={selectedBlock.visual.fontWeight ?? 'regular'}
+                onChange={(event) =>
+                  emitDraft(
+                    updateBlock(draft, selectedBlock.id, (block) => ({
+                      ...block,
+                      visual: {
+                        ...block.visual,
+                        fontWeight: event.target.value as PageDraftFontWeight,
+                      },
+                    })),
+                  )
+                }
+              >
+                <option value="regular">Regular</option>
+                <option value="semibold">Semibold</option>
+                <option value="bold">Bold</option>
+              </select>
+            </label>
+          </div>
         </>
       ) : null}
     </fieldset>

@@ -1,4 +1,4 @@
-import type { CSSProperties, FocusEvent, ReactNode } from 'react';
+import type { CSSProperties, FocusEvent, KeyboardEvent, MouseEvent, ReactNode } from 'react';
 import type {
   PageAsset,
   PageDraft,
@@ -14,6 +14,8 @@ interface PageDraftPreviewProps {
   editable?: boolean;
   language?: string;
   onDraftChange?: (draft: PageDraft) => void;
+  onBlockSelect?: (blockId: string) => void;
+  selectedBlockId?: string | null;
 }
 
 export function contentForPreviewLanguage(draft: PageDraft, language?: string): {
@@ -41,16 +43,26 @@ export function contentForPreviewLanguage(draft: PageDraft, language?: string): 
 }
 
 function blockStyle(block: PageDraftBlock): CSSProperties {
+  const fontWeight = {
+    bold: 700,
+    regular: 400,
+    semibold: 600,
+  }[block.visual.fontWeight ?? 'regular'];
+
   return {
     backgroundColor: block.visual.backgroundColor,
     color: block.visual.textColor,
+    fontWeight,
     gridColumn: `${block.layout.column} / span ${block.layout.width}`,
     gridRow: `${block.layout.row}`,
+    textAlign: block.visual.textAlign ?? 'left',
   };
 }
 
-function classNameFor(block: PageDraftBlock) {
-  return `draft-block ${block.type} ${block.visual.size}`;
+function classNameFor(block: PageDraftBlock, selected: boolean, selectable: boolean) {
+  return `draft-block ${block.type} ${block.visual.size}${selectable ? ' selectable' : ''}${
+    selected ? ' selected' : ''
+  }`;
 }
 
 function linkedContent(block: PageDraftBlock, children?: ReactNode) {
@@ -272,6 +284,8 @@ export function PageDraftPreview({
   editable = false,
   language,
   onDraftChange,
+  onBlockSelect,
+  selectedBlockId,
 }: PageDraftPreviewProps) {
   const localizedDraft = contentForPreviewLanguage(draft, language);
   const canEdit = editable && Boolean(onDraftChange);
@@ -288,6 +302,24 @@ export function PageDraftPreview({
 
   function commitSectionTitle(sectionId: string, title: string) {
     onDraftChange?.(updateLocalizedSectionTitle(draft, localizedDraft.language, sectionId, title));
+  }
+
+  function selectBlock(blockId: string) {
+    if (canEdit) {
+      onBlockSelect?.(blockId);
+    }
+  }
+
+  function handleBlockClick(event: MouseEvent<HTMLElement>, blockId: string) {
+    event.stopPropagation();
+    selectBlock(blockId);
+  }
+
+  function handleBlockKeyDown(event: KeyboardEvent<HTMLElement>, blockId: string) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      selectBlock(blockId);
+    }
   }
 
   return (
@@ -333,14 +365,20 @@ export function PageDraftPreview({
                 return null;
               }
               const asset = block.assetId ? assetsById.get(block.assetId) ?? null : null;
+              const selected = selectedBlockId === block.id;
 
               return (
                 <article
-                  className={classNameFor(block)}
+                  aria-label={`Select element ${block.id}`}
+                  aria-selected={selected || undefined}
+                  className={classNameFor(block, selected, canEdit)}
                   data-asset-family={asset?.family}
                   data-testid={`draft-block-${block.id}`}
                   key={block.id}
                   style={blockStyle(block)}
+                  tabIndex={canEdit ? 0 : undefined}
+                  onClick={(event) => handleBlockClick(event, block.id)}
+                  onKeyDown={(event) => handleBlockKeyDown(event, block.id)}
                 >
                   {block.type === 'hero' ? (
                     <strong>

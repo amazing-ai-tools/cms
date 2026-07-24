@@ -268,6 +268,7 @@ export function WorkspaceShell({
   const [isSavingAiSettings, setIsSavingAiSettings] = React.useState(false);
   const [previewLanguage, setPreviewLanguage] = React.useState('en');
   const [previewViewport, setPreviewViewport] = React.useState<PreviewViewport>('desktop');
+  const [selectedDraftBlockId, setSelectedDraftBlockId] = React.useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
   const selectedNode = nodes.find((node) => node.id === selectedNodeId) ?? null;
   const selectedCategory = canCreateChildCategory(selectedNode) ? selectedNode : null;
@@ -461,6 +462,20 @@ export function WorkspaceShell({
       setPreviewLanguage(languages[0] ?? 'en');
     }
   }, [previewDraft?.id, previewDraft?.updatedAt, selectedVersionId, previewLanguage]);
+
+  React.useEffect(() => {
+    if (!previewDraft || selectedVersion) {
+      setSelectedDraftBlockId(null);
+      return;
+    }
+
+    if (
+      selectedDraftBlockId &&
+      !previewDraft.blocks.some((block) => block.id === selectedDraftBlockId)
+    ) {
+      setSelectedDraftBlockId(previewDraft.blocks[0]?.id ?? null);
+    }
+  }, [previewDraft?.id, previewDraft?.updatedAt, selectedDraftBlockId, selectedVersion]);
 
   async function handleCreate(type: ContentNodeType, parentId: string | null) {
     const parent = parentId ? nodes.find((node) => node.id === parentId) ?? null : null;
@@ -1205,10 +1220,17 @@ export function WorkspaceShell({
                 editable={!selectedVersion}
                 language={selectedPreviewLanguage}
                 onDraftChange={handleDraftChange}
+                onBlockSelect={setSelectedDraftBlockId}
+                selectedBlockId={selectedDraftBlockId}
               />
             </PreviewViewportFrame>
             {selectedVersion ? null : (
-              <PageDraftEditor draft={previewDraft} onDraftChange={handleDraftChange} />
+              <PageDraftEditor
+                draft={previewDraft}
+                selectedBlockId={selectedDraftBlockId}
+                onDraftChange={handleDraftChange}
+                onSelectedBlockChange={setSelectedDraftBlockId}
+              />
             )}
           </>
         ) : (

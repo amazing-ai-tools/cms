@@ -54,6 +54,8 @@ export const embeddedPageDraftSchema = {
               textColor: { type: 'string', pattern: '^#[0-9a-fA-F]{6}$' },
               accentColor: { type: 'string', pattern: '^#[0-9a-fA-F]{6}$' },
               size: { type: 'string', enum: ['compact', 'standard', 'large'] },
+              fontWeight: { type: 'string', enum: ['regular', 'semibold', 'bold'] },
+              textAlign: { type: 'string', enum: ['left', 'center', 'right'] },
             },
           },
         },
@@ -174,6 +176,8 @@ export const embeddedPageDraftSchema = {
                     textColor: { type: 'string', pattern: '^#[0-9a-fA-F]{6}$' },
                     accentColor: { type: 'string', pattern: '^#[0-9a-fA-F]{6}$' },
                     size: { type: 'string', enum: ['compact', 'standard', 'large'] },
+                    fontWeight: { type: 'string', enum: ['regular', 'semibold', 'bold'] },
+                    textAlign: { type: 'string', enum: ['left', 'center', 'right'] },
                   },
                 },
               },
@@ -212,6 +216,12 @@ function validateBlock(block) {
     assertColor(block.visual.accentColor, 'Content block accent color');
   }
   assert(['compact', 'standard', 'large'].includes(block.visual?.size), 'Content block size is not supported.');
+  if (block.visual?.textAlign) {
+    assert(['left', 'center', 'right'].includes(block.visual.textAlign), 'Content block text alignment is not supported.');
+  }
+  if (block.visual?.fontWeight) {
+    assert(['regular', 'semibold', 'bold'].includes(block.visual.fontWeight), 'Content block font weight is not supported.');
+  }
 }
 
 function validateSeo(seo, prefix = 'Draft') {

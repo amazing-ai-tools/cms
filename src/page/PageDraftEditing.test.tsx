@@ -40,6 +40,22 @@ function draftFor(pageId: string): PageDraft {
           size: 'large',
         },
       },
+      {
+        id: 'block-proof',
+        type: 'text',
+        content: 'Proof points for the generated offer.',
+        layout: {
+          column: 1,
+          row: 2,
+          width: 6,
+        },
+        visual: {
+          backgroundColor: '#ffffff',
+          textColor: '#17211b',
+          accentColor: '#2f7d5f',
+          size: 'standard',
+        },
+      },
     ],
     layout: {
       canvas: {
@@ -48,7 +64,7 @@ function draftFor(pageId: string): PageDraft {
       sections: [
         {
           id: 'section-generated-proposal',
-          blockIds: ['block-hero'],
+          blockIds: ['block-hero', 'block-proof'],
         },
       ],
     },
@@ -121,10 +137,10 @@ describe('draft attribute editing', () => {
       target: { value: '#ffffff' },
     });
     await userEvent.selectOptions(
-      within(previewPanel).getByLabelText(/primary block size/i),
+      within(previewPanel).getByLabelText(/element size/i),
       'compact',
     );
-    fireEvent.change(within(previewPanel).getByLabelText(/primary block width/i), {
+    fireEvent.change(within(previewPanel).getByLabelText(/element width/i), {
       target: { value: '6' },
     });
 
@@ -161,6 +177,54 @@ describe('draft attribute editing', () => {
       const savedDraft = (await pageContextService.loadPageContext(page.id)).draft;
       expect(savedDraft?.blocks[0].content).toBe('Edited directly inside the preview canvas.');
       expect(savedDraft?.isDirty).toBe(true);
+    });
+  });
+
+  test('selects a preview element and edits its size, colors, and formatting', async () => {
+    const { page, pageContextService } = await renderWorkspaceWithDraft();
+    const previewPanel = screen.getByRole('region', { name: /page preview/i });
+
+    await userEvent.click(await within(previewPanel).findByTestId('draft-block-block-proof'));
+
+    expect(within(previewPanel).getByLabelText(/selected element/i)).toHaveValue('block-proof');
+
+    fireEvent.change(within(previewPanel).getByLabelText(/element background color/i), {
+      target: { value: '#fff4e6' },
+    });
+    fireEvent.change(within(previewPanel).getByLabelText(/element text color/i), {
+      target: { value: '#101820' },
+    });
+    await userEvent.selectOptions(within(previewPanel).getByLabelText(/element size/i), 'large');
+    fireEvent.change(within(previewPanel).getByLabelText(/element width/i), {
+      target: { value: '8' },
+    });
+    await userEvent.selectOptions(
+      within(previewPanel).getByLabelText(/element alignment/i),
+      'center',
+    );
+    await userEvent.selectOptions(
+      within(previewPanel).getByLabelText(/element weight/i),
+      'bold',
+    );
+
+    await waitFor(async () => {
+      const savedDraft = (await pageContextService.loadPageContext(page.id)).draft;
+      const editedBlock = savedDraft?.blocks.find((block) => block.id === 'block-proof');
+      expect(editedBlock?.visual).toMatchObject({
+        backgroundColor: '#fff4e6',
+        textColor: '#101820',
+        size: 'large',
+        textAlign: 'center',
+        fontWeight: 'bold',
+      });
+      expect(editedBlock?.layout.width).toBe(8);
+    });
+    expect(within(previewPanel).getByTestId('draft-block-block-proof')).toHaveClass('selected');
+    expect(within(previewPanel).getByTestId('draft-block-block-proof')).toHaveStyle({
+      backgroundColor: '#fff4e6',
+      color: '#101820',
+      gridColumn: '1 / span 8',
+      textAlign: 'center',
     });
   });
 });
